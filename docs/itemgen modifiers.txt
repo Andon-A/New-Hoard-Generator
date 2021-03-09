@@ -1,0 +1,102 @@
+These are the pre-programmed effects that an enhancement can apply.
+They're broken down into cateogires: General, that effects all things,
+and then also specific categories (e.g. weapons) that only affect
+specific things.
+Each of these effects is exclusive and does not stack. Only the first
+enhancement or material to give the effect will apply. If you want to
+make sure that doesn't cause problems, set up your exclusions in the
+enhancements.cfg properly!
+Note that enhancement bonus (+1, etc) is applied by the program, so
+hit bonus, damage bonus, ac bonus, etc are not applied here.
+Effects should be separated with a semicolon (;)
+
+General effects:
+
+changeweight(x) - Multiplies weight by this amount
+
+Spellcasting:
+	randspellX(minlevel, maxlevel, class, school): Selects a spell for the
+	appropriate @spellX variable, with X being a number from 0 through 9. If the
+	correct @spellX variable is not used, the spell will be generated but ignored.
+	This has four variables possible: Class, School, Minlevel, and Maxlevel.
+	Class: A list of classes separated by full colons (:). If only one class is
+		desired, no colon is needed. Can be omitted. The order of Class and
+		School is not important.
+	School: As class, but for spell schools. Can be omitted.
+	Minlevel, Maxlevel: The minimum and maximum spell level, inclusive. Use the
+		same number twice to dictate a single spell level. These two MUST be
+		the first two variables, and both MUST be included.
+charges:
+	charges(x) = Sets the charges to this amount if it is not already higher.
+	modifycharges(x) = Modifies the charges by the designated amount. Item must
+		have charges, and cannot reduce them below 1.
+	recharge(var1,var2) = Sets the recharge amount per long rest.
+		Var1 is the dice (1d3, 1d4, etc) with no modifiers.
+		Var2, if included, is the modifiers.
+		If the item has a recharge, it will take the larger of the two dice sets.
+		Similarly, if it has multiple modifiers, it will take the larger one.
+	destroyonempty = Adds "If the last charge is epxneded, roll a d20. On a 1, it
+		crumbles into dust and is destroyed" to the item's description.
+		This text can be changed in itemgen.cfg
+
+Ammunition effects:
+	setquantity(x) = Sets the quantity to this amount, to a minimum of 2.
+	modifyquantity(x) = Multiplies the quantity by this amount and then rounds. Minimum of 2.
+	addquantity(x) = Adds (or subtracts) the given number by this amount. Minimum of 2.
+
+Weapon effects:
+	These effects only work if the thing to modify is there in the first place.
+	Attempting to change the damage dice of, say, a net isn't going to do anything.
+
+changedmgtype(x) - This effect changes the weapon's damage type to X,
+	which can be any of the standard 5e damage types.
+changedmgdice(x) - This effect changes the weapon's damage dice. Integer required.
+	If given as an integer (IE, +1 or -1), then it adjusts the dice size,
+	up to a maximum of a D12 or minimum of a D4. If the weapon has flat damage
+	(like the blowgun), reductions are ignored but increases give it the appropriate
+	amount of d4s (If it's 1 damage, it gets 1d4, 2 damage gets 2d4, etc)
+	If given as a dice set (IE, 1d8), then it replaces the dice size with
+	the new one.
+changeversatile(x) - This effect changes the weapon's Versatile damage dice.
+	Otherwise functions as changedmgdice.
+addproperty(x, var1, var2) - This effect adds a property.
+	var1 and var2 optional (See below)
+	If this property is *versatile* it'll add var1 as the damage. Var2 is ignored.
+	If this property is *thrown* or *ammunition* it'll add var1 as normal range
+	and it'll add var2 as long range. If var2 is not provided, it uses var1.
+	These three will be ignored if the variables aren't given.
+	If the property already exists, the modifier is ignored.
+removeproperty(x) - This effect removes a property.
+addpropertyif(property,second property,true/false,var1,var2) - This effect adds a
+	property, but only if the second property is also met. If the third
+	condition is TRUE, then the item must have the second property, while
+	if it is FALSE the item cannot have it. Effect will be rejected if
+	conditions are not met. If the property to be added is Versatile, Ammunition
+	or Thrown, Var1 and Var2 are used as above.
+multiplyrange1(x) - This effect multiplies the weapon's normal range by
+	the given amount. It has no effect on the weapon's long range.
+	Results will be rounded to 10-foot increments.
+multiplyrange2(x) - This effect multiplies the weapon's long range by
+	the given amount. It has no effect on the weapon's normal range.
+	Results will be rounded to 10-foot increments.
+addrange1(x) - This effect adds the given number to the weapon's normal
+	range. It has no effect on the weapon's long range.
+addrange2(x) - This effect adds the given number to the weapon's long
+	range. It has no effect on the weapon's normal range.
+
+Armor effects:
+
+changeac(x) - Changes the Armor Class modifier by the set amount. This
+	is not error checked!
+stealtpenalty(x) - TRUE or FALSE (Or 1 or 0, both ways will parse).
+	Sets the stealth disadvantage penalty to the given variable.
+adjstrength(x) - The armor's strength requirement is changed by X. Armor must have
+	a non-0 strength requirement.
+setstrength(x) - The armor now requires the given Strength. If 0, removes entirely.
+setdexmax(x) - Sets the armor's maximum dexterity to the given amount. If 0, the armor
+	no longer benefits from any dexterity. If -1, the armor benefits from max dex.
+adjdexmax(x) - Adjusts the maximum Dexterity by the given amount. The dexterity modifier
+	must not be unlimited or none.
+
+Shield effects:
+changeac(x) - As above in Armor.

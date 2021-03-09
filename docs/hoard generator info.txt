@@ -1,0 +1,36 @@
+mincr = Minimum CR for this generator. (Required)
+maxcr = Maximum CR for this generator. (Required)
+hoarddice = Number and size of dice to use for the GP amount of the hoard. NO modifiers (8d6, not 8d6+3)(Required)
+hoardmultiplier = Number to multiply the hoard GP dice by to get the final amount. Must be whole, positive numbers. (Default to 1)
+hoarddivisor = Number to divide the hoard GP dice by to get the final amount. Must be whole, positive numbers. (Default to 1)
+hoardmodifier = Number added to the hoard GP to get the final amount. Must be whole numbers, but can be negative. Added after multiplication/division(Default to 0)
+hoardtries = Number of dice rolls the generator makes for the GP amount. (Default 1)
+hoardmaxmin = If the GP takes the highest (MAX) of the tries, or if it takes the lowest (MIN) of the tries. (Default MIN)
+treasuredice = As above, but for the value of the treasure pile. (Required)
+treasuremultiplier = As above, but for the value of the treasure pile.
+treasuredivisor = As above, but for the value of the treasure pile.
+treasuremodifier = As above, but for the value of the treasure pile.
+treasuretries = As above, but for the value of the treasure pile.
+treasuremaxmin = As above, but for the value of the treasure pile.
+itemdice = As above, but for the number of magic/special items. (Required)
+itemmultiplier = As above, but for the number of magic/special items.
+itemmodifier = As above, but for the number of magic/special items.
+itemtries = As above, but for the number of magic/special items.
+itemmaxmin = As above, but for the number of magic/special items.
+commonwt = Weight of getting a common item. Must be non-negative whole number. (Default 1)
+uncommonwt = Weight of getting an uncommon item. Must be non-negative whole number. (Default 1)
+rarewt = Weight of getting a rare item. Must be non-negative whole number. (Default 1)
+veryrarewt = Weight of getting a very rare item. Must be non-negative whole number. (Default 1)
+legendarywt = Weight of getting a legendary item. Must be non-negative whole number. (Default 1)
+staticwt = Weight of getting a static item. Must be non-negative whole number. (Default 1)
+randomwt = Weight of getting a generated item. Must be non-negative whole number. (Default 1)
+forcerandomscroll = If TRUE, replaces any static spell scrolls with randomly generated ones, so they have spells attached. If FALSE, static scrolls stay. (Default FALSE)
+commonvalue = How much "value" a common item uses (Default 1)
+uncommonvalue = How much "value" an uncommon item uses (Default 1)
+rarevalue = How much "value" a rare item uses (Default 1)
+veryrarevalue = How much "value" a very rare item uses (Default 1)
+legendaryvalue = How much "value" a legendary item uses (Default 1)
+
+Notes:
+-Individual item chances (IE, Ammunition vs boots vs whatever) is handled inside the generator.
+-"Values" are forced to a minimum of 1. Otherwise, you get endless hoards and that makes the program sad.

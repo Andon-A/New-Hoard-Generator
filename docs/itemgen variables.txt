@@ -1,0 +1,86 @@
+VARIABLES.TXT
+
+This file describes the various variables that can be used inside the
+definitions of items, materials, effects, etc. They can be used in the following
+options: Prefix, Suffix, Name, and Description. Each variable is defined by
+an @ and the listed word. With how these work, there doesn't have to be a space
+either before or after them. If you use @item and the variable is book, it'll
+appear as "book". While if you use @itemish and it's book, it'll appear as
+"bookish". Variables must be in all lowercase.
+
+Variables are replaced as the very last step of generating an item. Things such
+as programmed modifiers, effects, and other things happen prior to this step.
+
+Random Choice:
+	The @rX variables pull from the randomlistX option, and X can be anywhere
+	from 0 to 9. If used, the options should be of the same length, with the
+	generator using the length of the shortest one to determine its choice.
+	This choice is the same across all lists - IE, if it picks the third item,
+	it'll be the third item in each list.
+	If you don't use a given @rX value, the randomlistX option can be ignored,
+	but it must be present if you use a given value.
+	The Random Choice variables are replaced as the material or effect is
+	generated, and in numerical order, so  you can use further variables
+	(Such as @item) inside these lists if you desire to.
+	Each option that has a random list - Such as, say, a material or an effect -
+	is chosen separately. So while a material may be Blueleaf, Greenleaf, or
+	Redleaf, which one of these is chosen has no bearing on if the effect has
+	Fire, Cold, or Lightning chosen.
+
+Spells:
+	Effects can genrate up to 10 spells, each using the @spellX variable,
+	with X being a number 0-9. This coincides with the same numbered use
+	of the randspellX modifier. The @spellX variables are replaced when
+	the effect generates.
+
+Charges:
+	The @charges variable is replaced by the number of charges the item has,
+	and similarly the @recharge variable is replaced by its recharge dice.
+	
+Item name:
+	The @item variable returns the NAME of the base item. It will be made
+	lowercase for descriptions.
+	The @category variable returns the (lowercase) item category (such as
+	"armor" or "shield")
+
+Item Enhancement:
+	The @enh variable returns the numerical value of the item's enhancement
+	bonus, such as 1, 2, or 3 and not +1, +2, or +3. Enhancements will only
+	generate on weapons, ammunition, armor, and shields, but it technically
+	will be replaced with 0 on all other items.
+	
+Material Name:
+	The @material variable returns the name of the material the item is made of.
+	For items not made of specific materials, it will return an empty string
+	instead, so use wisely! This is also made lowercase for descriptions.
+
+Damage (Weapons only)
+	The @dmg variable returns the weapon's base damage dice, but not the type.
+	The @vdmg variable returns the weapon's Versatile damage dice
+	The @dmgtype variable returns the weapon's damage type, but not dice.
+
+Ammunition Only:
+	The @qty variable returns the base item's "quantity" variable.
+
+Weight:
+	The @weight variable returns the item's total weight.
+	
+Defense (Armor and Shield):
+	The @ac variable returns the item's total Armor Class (or bonus), including
+	any additional granted by the enhancement bonus. This may be a number or it
+	might be the string of the calculation (IE, 11 + Dex)
+	The @rawac variable returns the item's base Armor Class (or bonus),
+	excluding any additional granted by the enhancement bonus but including any
+	other effects.
+
+Defense (Armor only):
+	The @reqstr variable returns the item's required Strength
+	The @maxdex variable returns the item's maximum Dexterity modifier. If the
+	item does not have one (Such as for most light armors), it will replace it
+	with "none" instead.
+	
+Description:
+	There are various descriptions for each item type. These can be accessed via
+	the appropriate @XXdescription variable. IE, if you wanted to copy the armor
+	description into a shield, you could use @armordescription
+	These variables are replaced when the effect or material is generated.

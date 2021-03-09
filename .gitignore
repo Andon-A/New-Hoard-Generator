@@ -123,3 +123,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# All of my own custom ones.
+# This includes: Log files. CSV files. PKL files.
+# hoards folder. Logs folder.
+*.log
+*.csv
+*.pkl
+logs/
+hoards/
