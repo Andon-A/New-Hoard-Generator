@@ -17,7 +17,7 @@ from math import ceil, floor
 
 # First, like the others, load our config.
 cfg = configparser.ConfigParser()
-cfg.read("./config/general.cfg")
+cfg.read("./config/general.cfg", encoding="cp1252")
 # Get our font folder
 fonts = cfg["Folders"]["pdffonts"]
 fontname = cfg["Fonts"]["name"]

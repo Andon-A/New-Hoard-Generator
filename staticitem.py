@@ -11,17 +11,17 @@ import os
 logging.info("Importing static items")
 # Get the folder configuration configuration first.
 cfg = configparser.ConfigParser()
-cfg.read("./config/general.cfg")
+cfg.read("./config/general.cfg", encoding="cp1252")
 staticdir = cfg["Folders"]["staticfolder"]
 # Now our own. Reset it, don't want any conflicting data.
 cfg = configparser.ConfigParser()
-cfg.read("./config/staticconfig.cfg")
+cfg.read("./config/staticconfig.cfg", encoding="cp1252")
 # Now the information from static items.
 data = configparser.ConfigParser()
 dlist = os.listdir("./%s" % staticdir)
 for d in dlist:
     if d[-4:] == ".cfg":
-        data.read("./%s/%s" % (staticdir, d))
+        data.read("./%s/%s" % (staticdir, d), encoding="cp1252")
         logging.info("Item file ./%s/%s loaded." % (staticdir, d))
 print("Static item files loaded.")
 

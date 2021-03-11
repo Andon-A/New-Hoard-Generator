@@ -11,14 +11,14 @@ import os
 # First, load our configurations.
 logging.info("Importing Treasures")
 cfg = configparser.ConfigParser()
-cfg.read("./config/general.cfg")
+cfg.read("./config/general.cfg", encoding="cp1252")
 treasuredir = cfg["Folders"]["treasurefolder"]
 # Now load the treasures
 data = configparser.ConfigParser()
 dlist = os.listdir("./%s" % treasuredir)
 for d in dlist:
     if d[-4:] == ".cfg":
-        data.read("./%s/%s" % (treasuredir, d))
+        data.read("./%s/%s" % (treasuredir, d), encoding="cp1252")
         logging.info("Item file ./%s/%s loaded." % (treasuredir, d))
 print("Treasure item files loaded.")
 

@@ -31,7 +31,7 @@ logging.info("Config file loaded: ./config/general.cfg")
 MAXCR = cfg["General"].getint("maxcr")
 
 generators = configparser.ConfigParser()
-generators.read("./config/generators.cfg")
+generators.read("./config/generators.cfg", encoding="cp1252")
 logging.info("Generator config file loaded.")
 
 """# Remove any excess log files.

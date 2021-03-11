@@ -22,5 +22,8 @@ There's several things I'm planning on adding as time goes on. I'll give a rough
 * Configuration editing in the UI
 * A better method for saving other than "It kinda works"
 * Art! But I'm very picky about what art I use, mostly because there's a lot of stolen art out there. Picking through that will take time.
+### What do I need to run it?
+The Hoard Generator was made with Python 3.8.6, and I recently updated to 3.9.2 and everything seems to be working. It largely sticks to using standard libraries, but also uses [pyfpdf2](https://pypi.org/project/fpdf2/) for the pdf saving features. For most of you, that's just a quick `pip install fpdf2` away. Make sure that it's fpdf2 and not the original fpdf, as the original has a few things that are slightly changed.... enough to make it not work.
+Windows Users: In the next few days, I'm going to be working on configuring pyinstaller to make an .exe application that you won't need anything to run. If you have python installed, you can run it yourself, and if you don't, you can always [install it](https://www.python.org/about/gettingstarted/).
 ### How can I contribute?
 Well, for one, this is the first python code I've written in *some time* so there's definitely some improvements to make to the code. And if you have a feature in mind, feel free to fork this thing, add your feature, and put it on a pull request. I do want to keep it functional across all OS-es, so I've specifically avoided windows-specific things. Ideally it remains fairly lightweight, but ease of use and ease of maintenance is a higher priority.

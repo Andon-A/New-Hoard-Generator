@@ -7,7 +7,7 @@ import logging
 import os
 
 cfg = configparser.ConfigParser()
-cfg.read("./config/general.cfg")
+cfg.read("./config/general.cfg", encoding="cp1252")
 # print("Item Generator config loaded")
 logging.info("Hoard Name Generator config loaded.")
 # Load our item files

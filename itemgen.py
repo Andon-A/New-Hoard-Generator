@@ -19,7 +19,7 @@ item"."""
 general = configparser.ConfigParser()
 general.read("./config/general.cfg")
 cfg = configparser.ConfigParser()
-cfg.read("./config/itemgen.cfg")
+cfg.read("./config/itemgen.cfg", encoding="cp1252")
 # print("Item Generator config loaded")
 logging.info("Item Generator config loaded.")
 # Load our item files
@@ -29,7 +29,7 @@ ilist = os.listdir("./%s" % dfolder)
 for i in ilist:
     if i[-4:] == ".cfg":
         # A config file. Load it.
-        data.read("./%s/%s" % (dfolder, i))
+        data.read("./%s/%s" % (dfolder, i), encoding="cp1252")
         # print("Item file %s loaded." % i)
         logging.info("Item file ./%s/%s loaded." % (dfolder, i))
 print("Item generator files loaded.")
