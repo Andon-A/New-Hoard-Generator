@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 #New Hoard Generator UI
 # I hate UIs, but so far this hasn't been terrible.
 # Doesn't help that it's simple.
