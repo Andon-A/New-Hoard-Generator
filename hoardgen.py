@@ -9,7 +9,7 @@ import os
 import time
 
 # Some cnstants.
-VERSION = "2021.3.9 (Alpha)" # Just a version number. Calendar Version.
+VERSION = "2021.3.11 (Alpha)" # Just a version number. Calendar Version.
 
 print("New Hoard Generator starting...")
 

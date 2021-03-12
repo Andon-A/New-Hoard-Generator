@@ -132,3 +132,7 @@ dmypy.json
 *.pkl
 logs/
 hoards/
+sourcefiles/
+Output/
+*.iss
+build.py
