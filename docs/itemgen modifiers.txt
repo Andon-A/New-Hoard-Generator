@@ -15,17 +15,16 @@ General effects:
 changeweight(x) - Multiplies weight by this amount
 
 Spellcasting:
-	randspellX(minlevel, maxlevel, class, school): Selects a spell for the
-	appropriate @spellX variable, with X being a number from 0 through 9. If the
-	correct @spellX variable is not used, the spell will be generated but ignored.
-	This has four variables possible: Class, School, Minlevel, and Maxlevel.
-	Class: A list of classes separated by full colons (:). If only one class is
-		desired, no colon is needed. Can be omitted. The order of Class and
-		School is not important.
-	School: As class, but for spell schools. Can be omitted.
-	Minlevel, Maxlevel: The minimum and maximum spell level, inclusive. Use the
-		same number twice to dictate a single spell level. These two MUST be
-		the first two variables, and both MUST be included.
+	randspellX(options):
+		Options can be: Level, School, Class
+		All numerical (integer) values will be treated as level arguments.
+		If one is given, the level will be that. If multiple are given, the
+		lowest is the minimum level and the highest the maximum. All others
+		will be ignored.
+		All string values will be checked against the list of spell schools
+		and spell classes (As included in the spells loaded). If they match,
+		then they will be included as a filter. If they don't match, they'll
+		be ignored.
 charges:
 	charges(x) = Sets the charges to this amount if it is not already higher.
 	modifycharges(x) = Modifies the charges by the designated amount. Item must

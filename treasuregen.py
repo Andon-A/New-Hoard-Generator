@@ -1,61 +1,40 @@
 # Treasure Generator
 # This file takes a given gold amount and generates some treasures from that.
 
-import configparser
 import random
 import logging
-import os
+import configs
 
-
-
-# First, load our configurations.
-logging.info("Importing Treasures")
-cfg = configparser.ConfigParser()
-cfg.read("./config/general.cfg", encoding="cp1252")
-treasuredir = cfg["Folders"]["treasurefolder"]
-# Now load the treasures
-data = configparser.ConfigParser()
-dlist = os.listdir("./%s" % treasuredir)
-for d in dlist:
-    if d[-4:] == ".cfg":
-        data.read("./%s/%s" % (treasuredir, d), encoding="cp1252")
-        logging.info("Item file ./%s/%s loaded." % (treasuredir, d))
-print("Treasure item files loaded.")
+general = configs.CFG(configs.GENERAL)
+item_data = configs.CFG(configs.TREASURE_DATA)
 
 # Treasure categories can be user-defined. So we want to make a list of them.
 categories = []
-for d in data:
-    if data.has_option(d, "category"):
-        if data[d]["category"] not in categories:
-            categories.append(data[d]["category"])
+for item in item_data.config:
+    category = item_data.get(item, "category")
+    if category is not None and category not in categories:
+        categories.append(category)
 
 
-def getTreasureList(category=None, minvalue=None, maxvalue=None):
+def getTreasureList(category=None, min_value=None, max_value=None):
     # Grabs a list of treasures. Can restrict by category or value.
-    ilist = []
-    for i in data:
-        # All treasures have to have some value.
-        if data.has_option(i, "value"):
-            if category is not None:
-                if not data.has_option(i, "category"):
-                    # No category on this item. Bye!
-                    continue
-                elif data[i]["category"] != category:
-                    # It has one, but not a match.
-                    continue
-            if maxvalue is not None or minvalue is not None:
-                v = data[i].getint("value")
-            if maxvalue is not None:
-                # Check our value ceiling.
-                if maxvalue < v:
-                    # Sorry, you're too expensive.
-                    continue
-            if minvalue is not None:
-                if minvalue > v:
-                    # Too cheap!
-                    continue
-            ilist.append(i)
-    return ilist
+    item_list = []
+    for item in item_data.config:
+        item_value = item_data.getInt(item, "value")
+        item_category = item_data.get(item, "category")
+        # Check our category
+        if category is not None:
+            if category != item_category:
+                continue
+        # Check our value
+        if min_value is not None:
+            if item_value < min_value:
+                continue
+        if max_value is not None:
+            if item_value > max_value:
+                continue
+        item_list.append(item)
+    return item_list
 
 class TreasurePile:
     def __init__(self, value, minvalue=None, maxvalue=None):
@@ -108,7 +87,7 @@ class TreasurePile:
         while len(getTreasureList(category, minvalue, maxvalue)) == 0:
             category = random.choice(categories)
             tries += 1
-            if tries > cfg["Treasuregen"].getint("maxtries"):
+            if tries > general.getInt("Treasuregen", "maxtries"):
                 # We've tried too many times.
                 return None
         return category
@@ -119,30 +98,29 @@ class TreasurePile:
     def getValue(self):
         # Gets the total value of the treasure pile.
         value = 0
-        for i in self.contents:
-            ivalue = data[i].getint("value")
-            qty = self.contents[i]
-            value += (ivalue * qty)
+        for item in self.contents:
+            item_value = item_data.getInt(item, "value")
+            qty = self.contents[item]
+            value += (item_value * qty)
         return value
     
     def getDescription(self):
         # Prints an orderly list of each item. Just sorted by name, not fancy.
-        clist = []
+        item_list = []
         desc = []
-        for t in self.contents:
-            clist.append(t)
-        clist.sort()
-        for t in clist:
-            tdesc = ""
-            tname = data[t]["name"]
-            qty = self.contents[t]
-            value = data[t].getint("value")
-            cat = data[t]["category"]
-            tdesc += "%sx %s (%s), %s gp each" % (str(qty), tname, cat, str(value))
-            if qty > 1:
-                tdesc += ", %s gp total." % str(value * qty)
+        for item in self.contents:
+            item_list.append(item)
+        item_list.sort()
+        for item in item_list:
+            item_name = item_data.get(item, "name")
+            item_qty = self.contents[item]
+            item_value = item_data.getInt(item, "value")
+            item_category = item_data.get(item, "category")
+            item_desc = "%sx %s (%s), %s gp each" % (str(item_qty), item_name, item_category, str(item_value))
+            if item_qty > 1:
+                item_desc += ", %s gp total." % str(item_value * item_qty)
             else:
-                tdesc += "."
-            desc.append(tdesc)
+                item_desc += "."
+            desc.append(item_desc)
         return "\n".join(desc)
         #return desc
