@@ -203,78 +203,16 @@ def compareDice(dice1, dice2):
 class Modifier:
     def __init__(self, category, itemtype=None, itemtypeconflict=None, itemsubtype=None,
         damagetype=None, materialtype=None, itemgroup=None, properties=None,
-        bonus=None, affix=None, effects=None, itemid=None, rarity=None):
+        bonus=None, affix=None, effects=None, itemid=None, rarity=None, force_none=False):
         # Set up our empty variables.
         self.emptyValues()
-        # OK, so we have a bunch of filters. Let's check them.
-        # We require they be error-checked and of the correct types beforehand.
-        # Category first. Super strict here.
-        if type(category) is not str:
-            logging.critical("Modifier must have a category of effect or material")
-            raise typeError("Modifier must have a category of effect or material.")
-        elif category not in ["effect","material"]:
-            logging.critical("Modifier must have a category of effect or material.")
-            raise ValueError("Modifier must have a category of effect or material.")
-        # Item type. Should be a single item type as a string. If not, ignore it.
-        if type(itemtype) is not str and itemtype is not None:
-            logging.error("Itemtype must be a single string. Ignoring")
-            itemtype = None
-        # Subtype should be a list or tuple or set.
-        if type(itemsubtype) not in [list, tuple, set] and itemsubtype is not None:
-            logging.error("Item subtype must be a list. Ignoring.")
-            itemsubtype = None
-        if itemsubtype is not None:
-            itemsubtype = set(itemsubtype)
-        # Damagetype is a string.
-        if type(damagetype) is not str and damagetype is not None:
-            logging.error("Damage type must be a string. Ignoring.")
-            damagetype = None
-        # Material Type is a list or tuple
-        if type(materialtype) not in [list, tuple] and materialtype is not None:
-            logging.error("Material type must be a list. Ignoring.")
-            materialtype = None
-        if materialtype is not None:
-            materialtype = set(materialtype)
-        # Item group, also a list/tuple
-        if type(itemgroup) not in [list, tuple] and itemgroup is not None:
-            logging.error("Item group must be a list. Ignoring.")
-            itemgroup = None
-        if itemgroup is not None:
-            itemgroup = set(itemgroup)
-        # Properties, also a list/tuple.
-        if type(properties) not in [list, tuple] and properties is not None:
-            logging.error("Properties must be a list. Ignoring.")
-            properties = None
-        # Bonus should be either an int (Set number), or a list/tuple (Min/max).
-        # Handling the list is done in the getModifier function
-        if type(bonus) not in [int, list, tuple] and bonus is not None:
-            logging.error("Bonus must be an int or two-item list. Ignoring.")
-            bonus = None
-        # affix should be a string.
-        if type(affix) is not str and affix is not None:
-            logging.error("Affix must be a string. Ignoring.")
-            affix = None
-        # But, affixes should only apply to effects, not materials.
-        elif affix is not None and category == "material":
-            logging.error("Affixes do not apply to materials. Ignoring.")
-            affix = None
-        # Only prefix and suffix allowed.
-        elif affix not in ["prefix","suffix"] and affix is not None:
-            logging.error("Affix must be prefix or suffix only. Ignoring.")
-            affix = None
-        # Effects must be in a list or tuple.
-        if type(effects) not in [list, tuple] and effects is not None:
-            logging.error("Effects must be in a list. Ignoring.")
-            effects = None
-        if type(itemid) is not str and itemid is not None:
-            logging.error("Item ID must be a string. Ignoring.")
-            itemid = None
         # Well, that's a lot of stuff!
         # Grab ourselves an ID.
-        self.id = self.getID(category, itemtype, itemsubtype, damagetype,
-            materialtype, itemgroup, properties, bonus, affix, effects, itemid,
-            rarity=rarity, itemtypeconflict=itemtypeconflict)
-        self.setValues(itemid)
+        if force_none:
+            self.id = self.getID(category, itemtype, itemsubtype, damagetype,
+                materialtype, itemgroup, properties, bonus, affix, effects, itemid,
+                rarity=rarity, itemtypeconflict=itemtypeconflict)
+            self.setValues(itemid)
     
     def emptyValues(self):
         # Sets up all variables as their empty, default state.
@@ -485,8 +423,72 @@ class Modifier:
     def getID(self, category, itemtype, itemsubtype, damagetype, materialtype,
         itemgroup, properties, bonus, affix, effects, itemid, rarity, itemtypeconflict):
         # Grabs an appropriate item ID, given our filters.
-        # We've filtered our filters earlier, but we still need to deal with
-        # that bonus.
+        # First, time to filter those filters.
+        if type(category) is not str:
+            logging.critical("Modifier must have a category of effect or material")
+            raise typeError("Modifier must have a category of effect or material.")
+        elif category not in ["effect","material"]:
+            logging.critical("Modifier must have a category of effect or material.")
+            raise ValueError("Modifier must have a category of effect or material.")
+        # Item type. Should be a single item type as a string. If not, ignore it.
+        if type(itemtype) is not str and itemtype is not None:
+            logging.error("Itemtype must be a single string. Ignoring")
+            itemtype = None
+        # Subtype should be a list or tuple or set.
+        if type(itemsubtype) not in [list, tuple, set] and itemsubtype is not None:
+            logging.error("Item subtype must be a list. Ignoring.")
+            itemsubtype = None
+        if itemsubtype is not None:
+            itemsubtype = set(itemsubtype)
+        # Damagetype is a string.
+        if type(damagetype) is not str and damagetype is not None:
+            logging.error("Damage type must be a string. Ignoring.")
+            damagetype = None
+        # Material Type is a list or tuple
+        if type(materialtype) not in [list, tuple] and materialtype is not None:
+            logging.error("Material type must be a list. Ignoring.")
+            materialtype = None
+        if materialtype is not None:
+            materialtype = set(materialtype)
+        # Item group, also a list/tuple
+        if type(itemgroup) not in [list, tuple] and itemgroup is not None:
+            logging.error("Item group must be a list. Ignoring.")
+            itemgroup = None
+        if itemgroup is not None:
+            itemgroup = set(itemgroup)
+        # Properties, also a list/tuple.
+        if type(properties) not in [list, tuple] and properties is not None:
+            logging.error("Properties must be a list. Ignoring.")
+            properties = None
+        # Bonus should be either an int (Set number), or a list/tuple (Min/max).
+        # Handling the list is done in the getModifier function
+        if type(bonus) not in [int, list, tuple] and bonus is not None:
+            logging.error("Bonus must be an int or two-item list. Ignoring.")
+            bonus = None
+        # affix should be a string.
+        if type(affix) is not str and affix is not None:
+            logging.error("Affix must be a string. Ignoring.")
+            affix = None
+        # But, affixes should only apply to effects, not materials.
+        elif affix is not None and category == "material":
+            logging.error("Affixes do not apply to materials. Ignoring.")
+            affix = None
+        # Only prefix and suffix allowed.
+        elif affix not in ["prefix","suffix"] and affix is not None:
+            logging.error("Affix must be prefix or suffix only. Ignoring.")
+            affix = None
+        # Effects must be in a list or tuple.
+        if type(effects) not in [list, tuple] and effects is not None:
+            logging.error("Effects must be in a list. Ignoring.")
+            effects = None
+        if type(itemid) is not str and itemid is not None:
+            logging.error("Item ID must be a string. Ignoring.")
+            itemid = None
+        if type(itemtypeconflict) is str:
+            itemtypeconflict = [itemtypeconflict]
+        if type(itemtypeconflict) not in [list, tuple] and itemtypeconflict is not None:
+            logging.error("Invalid itemtypeconflict filter. Ignoring.")
+            itemtypeconflict = None
         min_bonus = 0
         max_bonus = 0
         if type(bonus) == int:
@@ -511,7 +513,10 @@ class Modifier:
                 if itemtype not in data and len(data) > 0:
                     # Our itemtype doesn't fit.
                     continue
-                if itemtypeconflict in data:
+                itemtypeconflict = set(itemtypeconflict)
+                data = set(data)
+                if not data.isdisjoint(itemtypeconflict):
+                    # There's an overlap and that's bad.
                     continue
             if itemsubtype is not None:
                 # Same deal here, except we have our own list.
@@ -652,6 +657,7 @@ class Item:
         if self.id is not None:
             self.getValues()
         self.generateEffects()
+        self.rarity = self.updateRarity()
     
     def emptyValues(self):
         # Sets the basic values. Every item must have all of these.
@@ -1067,6 +1073,26 @@ class Item:
         max = cfg.getInt("General", "max_bonus_%s" % self.rarity)
         current = self.getBonus()
         return max - current
+    
+    def updateRarity(self):
+        # Returns our actual rarity.
+        # We determine this by maximums.
+        common_max = cfg.getInt("General", "max_bonus_common")
+        uncommon_max = cfg.getInt("General", "max_bonus_uncommon")
+        rare_max = cfg.getInt("General", "max_bonus_rare")
+        veryrare_max = cfg.getInt("General", "max_bonus_veryrare")
+        # Don't worry about legendary. If it's above the veryrare amount, well.
+        bonus = self.getBonus()
+        if bonus <= common_max:
+            return "common"
+        elif bonus <= uncommon_max:
+            return "uncommon"
+        elif bonus <= rare_max:
+            return "rare"
+        elif bonux <= veryrare_max:
+            return "veryrare"
+        else:
+            return "legendary"
     
     def generateEffects(self):
         # Determines which effects (Prefix, Suffix, Material, Enhancement) are

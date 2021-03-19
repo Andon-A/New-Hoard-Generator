@@ -193,14 +193,27 @@ class Hoard:
                 rarity = random.choices(rarities, rweights)[0]
             source = random.choices(sources, sweights)[0]
             item = None
+            force_rarity = generators.getBool(self.gen, "force_rarity")
             if source == "static":
                 # A random static item.
+                # The way these work, we don't have to worry about rarity.
                 item = staticitem.Item(rarity=rarity)
             elif source == "random":
                 # This is unlikely to return an item of lower rarity, but maybe.
                 item = itemgen.Item(rarity=rarity)
+                if force_rarity:
+                    # Make sure we have the rarity we asked for.
+                    while item.rarity != rarity:
+                        item = itemgen.Item(rarity=rarity)
+                else:
+                    # Make sure we're not overcosting ourselves. I expect that
+                    # items will only ever under-cost themselves, but just in case.
+                    while rvalues[item.rarity] > budget:
+                        item = itemgen.Item(rarity=rarity)
             elif source == "spellbook":
                 item = spellbook.Spellbook(rarity=rarity)
+                # Spellbooks should never get a rarity that's different than asked
+                # So don't worry about those.
             budget -= rvalues[item.rarity] # The actual item rarity. Just in case it's different.
             self.items.append(item)
         return budget
