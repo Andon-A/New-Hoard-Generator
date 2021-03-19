@@ -149,38 +149,3 @@ class CFG:
             if value == optionvalue:
                 data.append(item)
         return data
-
-# Lists.
-def getList(section, option, config):
-    # Several of our keys are in semicolon-separated lists. This grabs them
-    # and splits them.
-    if config.has_option(section, option):
-        # No oopses here. We've got this information.
-        rawdata = config[section].get(option)
-        rawdata = rawdata.split(";")
-        data = []
-        for d in rawdata:
-            # This just cleans up any extra spaces before or after the semicolon
-            data.append(d.strip())
-        return data
-    else:
-        # The original version of this sent a debug info when it failed but.
-        # That happens a lot. Intentionally. So, don't do that.
-        return []
-
-def getOptionList(option, optionvalue, config):
-    # This grabs a list of items that have the selected option with the given
-    # value.
-    if type(optionvalue) is not str:
-        # You did an oops!
-        raise TypeError("optionvalue must be a string!")
-    olist = []
-    for item in config:
-        value = config[item].get(option)
-        if value is None:
-            # Nothing here.
-            continue
-        elif value == optionvalue:
-            # Excellent, just what we wanted.
-            olist.append(item)
-    return olist

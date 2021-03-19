@@ -25,10 +25,12 @@ ITEM_TYPES = ("ammunition", "armor", "belt", "boots", "bracers", "eyewear",
         "hat", "ring", "rod", "shield", "staff", "trinket", "wand", "weapon",
         "cloak", "gloves", "scroll")
 # These items are considered "Wondrous Items".
-# Wondrous Items don't get enhancement bonuses and are treated differently in
-# a few other ways.
+# Wondrous Items are treated differently in a few ways. Notably, they can ignore
+# some limits.
 WONDROUS_ITEMS = ("belt", "boots", "bracers", "eyewear", "hat", "ring", "rod",
-        "trinket", "cloak", "gloves", "scroll")
+        "trinket", "cloak", "gloves")
+# Items that can be enhanced.
+ENH_ITEMS = ("ammunition", "armor", "shield", "weapon", "staff", "wand")
 # And item weights. If we aren't given an item type, use these to determine.
 ITEM_WEIGHTS = []
 for item in ITEM_TYPES:
@@ -79,13 +81,13 @@ def checkAttunement(id1, id2):
         return True
     attune1 = attune1.lower()
     attune2 = attune2.lower()
-    restrict1 = item_data.get(id1, "attunementrequirements")
-    restrict2 = item_data.get(id2, "attunementrequirements")
+    restrict1 = item_data.get(id1, "attunement_requirements")
+    restrict2 = item_data.get(id2, "attunement_requirements")
     if attune1 == "false" or attune2 == "false":
         # No requirements on one of them.
         return True
-    if item_data.getBool(id1, "attunementjoin") == False or \
-        item_data.getBool(id2, "attunementjoin") == False:
+    if item_data.getBool(id1, "attunement_join") == False or \
+        item_data.getBool(id2, "attunement_join") == False:
         # One of these says "NO!" to joining any attunement.
         return False
     if attune1 == "desc" and restrict1 is None:
@@ -199,7 +201,7 @@ def compareDice(dice1, dice2):
 # A class for our modifiers.
 # These are our materials and effects.
 class Modifier:
-    def __init__(self, category, itemtype=None, itemsubtype=None,
+    def __init__(self, category, itemtype=None, itemtypeconflict=None, itemsubtype=None,
         damagetype=None, materialtype=None, itemgroup=None, properties=None,
         bonus=None, affix=None, effects=None, itemid=None, rarity=None):
         # Set up our empty variables.
@@ -271,7 +273,7 @@ class Modifier:
         # Grab ourselves an ID.
         self.id = self.getID(category, itemtype, itemsubtype, damagetype,
             materialtype, itemgroup, properties, bonus, affix, effects, itemid,
-            rarity=rarity)
+            rarity=rarity, itemtypeconflict=itemtypeconflict)
         self.setValues(itemid)
     
     def emptyValues(self):
@@ -302,7 +304,7 @@ class Modifier:
         self.attunement = self.getAttunement()
         if self.category == "material":
             # Effects don't have a material type since they're not, well. A material.
-            self.material_type = item_data.getList(self.id, "materialtype")
+            self.material_type = item_data.getList(self.id, "material_type")
         self.name = self.getString("name")
         self.prefix = self.getString("prefix")
         self.suffix = self.getString("suffix")
@@ -340,10 +342,10 @@ class Modifier:
         rlists = {}
         for option in item_data.config[self.id]:
             # Check each of our options.
-            if option.startswith("randomlist") and len(option) > 10:
+            if option.startswith("random_list_") and len(option) > 10:
                 # A random list! With an identifier!
                 random = item_data.getList(self.id, option)
-                rlists["%s" % option[10:]] = random
+                rlists["%s" % option[12:]] = random
         return rlists
     
     def chooseRandom(self):
@@ -432,14 +434,14 @@ class Modifier:
     def getDescription(self, category):
         if self.id is None:
             return "" # No description for nothing.
-        desc = item_data.get(self.id, "%sdescription" % category)
+        desc = item_data.get(self.id, "%s_description" % category)
         if desc is None:
             return ""
         for item_type in ITEM_TYPES:
-            if "@%sdescription" % item_type in desc:
-                newdesc = item_data.get(self.id, "%sdescription" % item_type)
+            if "@%s_description" % item_type in desc:
+                newdesc = item_data.get(self.id, "%s_description" % item_type)
                 if newdesc is not None:
-                    desc = desc.replace("@%sdescription" % item_type, newdesc)
+                    desc = desc.replace("@%s_description" % item_type, newdesc)
         desc = self.replaceVars(desc)
         return desc
         
@@ -468,7 +470,7 @@ class Modifier:
         if attune == "true" or attune == "desc":
             # We have some type of attunement.
             # See if we have any requirements.
-            attunereq = item_data.get(self.id, "attunementrequirements")
+            attunereq = item_data.get(self.id, "attunement_requirements")
             if attunereq is None:
                 # No requirements, just general attunement
                 return True
@@ -481,7 +483,7 @@ class Modifier:
             
     
     def getID(self, category, itemtype, itemsubtype, damagetype, materialtype,
-        itemgroup, properties, bonus, affix, effects, itemid, rarity):
+        itemgroup, properties, bonus, affix, effects, itemid, rarity, itemtypeconflict):
         # Grabs an appropriate item ID, given our filters.
         # We've filtered our filters earlier, but we still need to deal with
         # that bonus.
@@ -503,33 +505,35 @@ class Modifier:
         for mod in mod_list:
             # Now, to go through each of the filters.
             # First up, item type.
-            if itemtype is not None:
+            if itemtype is not None or itemtypeconflict is not None:
                 # Grab the data from the item.
-                data = item_data.getList(mod, "itemtype")
+                data = item_data.getList(mod, "item_type")
                 if itemtype not in data and len(data) > 0:
                     # Our itemtype doesn't fit.
+                    continue
+                if itemtypeconflict in data:
                     continue
             if itemsubtype is not None:
                 # Same deal here, except we have our own list.
                 # The effect must be wholly contained in the filter.
-                data = set(item_data.getList(mod, "itemsubtype"))
+                data = set(item_data.getList(mod, "item_subtype"))
                 if not data.issubset(itemsubtype) and len(data) > 0:
                     # It's not.
                     continue
                 # Now check for conflicts.
-                data = set(item_data.getList(mod, "itemsubtypeconflict"))
+                data = set(item_data.getList(mod, "item_subtype_conflict"))
                 if not data.isdisjoint(itemsubtype) and len(data) > 0:
                     # There's an overlap, which means conflict.
                     continue
             if damagetype is not None:
                 # The effect can apply to any of its given damage types
                 # We only have to make sure ours is in it.
-                data = item_data.getList(mod, "damagetype")
+                data = item_data.getList(mod, "damage_type")
                 if damagetype not in data and len(data) > 0:
                     # It's not in it.
                     continue
                 # And, similarly, we need to make sure ours is NOT in any conflict
-                data = item_data.getList(mod, "damagetypeconflict")
+                data = item_data.getList(mod, "damage_type_conflict")
                 if damagetype in data and len(data) > 0:
                     # It is, boo.
                     continue
@@ -537,12 +541,12 @@ class Modifier:
                 # OK, so. We have two things here.
                 # First, we need to see if our material type is allowed.
                 # This is simple overlap.
-                data = set(item_data.getList(mod, "materialtype"))
+                data = set(item_data.getList(mod, "material_type"))
                 if data.isdisjoint(materialtype) and len(data) > 0:
                     # No overlap.
                     continue
                 # Now, we need to see if there's any overlap with our restrictions.
-                data = set(item_data.getList(mod, "materialtypeconflict"))
+                data = set(item_data.getList(mod, "material_type_conflict"))
                 if not data.isdisjoint(materialtype) and len(data) > 0:
                     # There's an overlap, so no joy here.
                     continue
@@ -553,17 +557,17 @@ class Modifier:
                 if not data.issubset(itemgroup) and len(data) > 0:
                     continue
                 # As usual, check conflicts.
-                data = set(item_data.getList(mod, "groupconflict"))
+                data = set(item_data.getList(mod, "group_conflict"))
                 if not data.isdisjoint(itemgroup) and len(data) > 0:
                     # There's an overlap. That's bad.
                     continue
             if properties is not None:
                 # The given list must contain all of our requirements.
-                data = set(item_data.getList(mod, "requiredproperties"))
+                data = set(item_data.getList(mod, "required_properties"))
                 if not data.issubset(properties) and len(data) > 0:
                     continue
                 # And conflicts.
-                data = set(item_data.getList(mod, "propertyconflict"))
+                data = set(item_data.getList(mod, "property_conflict"))
                 if not data.isdisjoint(itemgroup) and len(data) > 0:
                     continue
             if bonus is not None:
@@ -582,8 +586,8 @@ class Modifier:
                     continue
             if effects is not None:
                 # These effects already exist. We must be compatible.
-                data = item_data.getList(mod, "effectconflict")
-                data += item_data.getList(mod, "materialconflict")
+                data = item_data.getList(mod, "effect_id_conflict")
+                data += item_data.getList(mod, "material_id_conflict")
                 compatible = True
                 for effect in effects:
                     if effect.id == mod:
@@ -595,8 +599,8 @@ class Modifier:
                         # Don't bother checking the rest.
                         compatible = False
                         break
-                    elist = item_data.getList(effect.id, "effectconflict")
-                    elist += item_data.getList(effect.id, "materialconflict")
+                    elist = item_data.getList(effect.id, "effect_id_conflict")
+                    elist += item_data.getList(effect.id, "material_id_conflict")
                     if mod in elist:
                         # Our modifier is prohibited by this effect.
                         compatible = False
@@ -610,7 +614,7 @@ class Modifier:
                     continue
             if itemid is not None:
                 # Make sure this item isn't prohibited.
-                data = item_data.getList(mod, "itemconflict")
+                data = item_data.getList(mod, "item_id_conflict")
                 if itemid in data:
                     continue
             if rarity is not None:
@@ -697,8 +701,8 @@ class Item:
         # Several of these won't exist in many cases. But they'll return as None
         # Which is precisely what we want.
         self.group = item_data.getList(self.id, "group")
-        self.subtype = item_data.getList(self.id, "itemsubtype")
-        self.material_type = item_data.getList(self.id, "materialtype")
+        self.subtype = item_data.getList(self.id, "item_subtype")
+        self.material_type = item_data.getList(self.id, "material_type")
         self.random_lists = self.getRandomLists()
         self.choices = self.chooseRandom()
         self.modifiers = self.getItemModifiers()
@@ -713,13 +717,13 @@ class Item:
         self.quantity = item_data.getInt(self.id, "quantity")
         # Weapon
         self.damage = item_data.get(self.id, "damage")
-        self.damage_type = item_data.get(self.id, "damagetype")
-        self.versatile_damage = item_data.get(self.id, "damagevers")
-        self.short_range = item_data.getInt(self.id, "shortrange")
-        self.long_range = item_data.getInt(self.id, "longrange")
+        self.damage_type = item_data.get(self.id, "damage_type")
+        self.versatile_damage = item_data.get(self.id, "versatile_damage")
+        self.short_range = item_data.getInt(self.id, "short_range")
+        self.long_range = item_data.getInt(self.id, "long_range")
         # Armor (& Shield)
-        self.ac = item_data.getInt(self.id, "armorclass")
-        self.min_str = item_data.getInt(self.id, "strengthreq")
+        self.ac = item_data.getInt(self.id, "armor_class")
+        self.min_str = item_data.getInt(self.id, "required_strength")
         # Name and Description. Always last, since sometimes they depend on things.
         self.item_name = self.getString("name")
         self.item_description = self.getString("Description")
@@ -730,6 +734,8 @@ class Item:
         magic = item_data.getBool(self.id, "is_magic")
         if magic is None:
             magic = False
+        if self.enhancement > 0:
+            magic = True
         if self.material is not None:
             if self.material.id is not None:
                 # Materials are also non-magical unless noted otherwise.
@@ -795,10 +801,10 @@ class Item:
         rlists = {}
         for option in item_data.config[self.id]:
             # Check each of our options.
-            if option.startswith("randomlist") and len(option) > 10:
+            if option.startswith("random_list_") and len(option) > 10:
                 # A random list! With an identifier!
                 random = item_data.getList(self.id, option)
-                rlists["%s" % option[10:]] = random
+                rlists["%s" % option[12:]] = random
         return rlists
     
     def chooseRandom(self):
@@ -883,7 +889,7 @@ class Item:
         if attune == "true" or attune == "desc":
             # We have some type of attunement.
             # See if we have any requirements.
-            attunereq = item_data.get(self.id, "attunementrequirements")
+            attunereq = item_data.get(self.id, "attunement_requirements")
             if attunereq is None:
                 # No requirements, just general attunement
                 return True
@@ -972,6 +978,9 @@ class Item:
         if effect is not None:
             budget += effect.bonus
         minbudget = cfg.getInt("Effects","budget_range")
+        if self.category == "scroll":
+            # We want scrolls to be really close to their maximum.
+            minbudget = cfg.getInt("Effects", "scroll_budget_range")
         if minbudget is None:
             minbudget = -10
         else:
@@ -993,6 +1002,14 @@ class Item:
             material_type = self.material_type
         all_properties = []
         all_properties += self.getProperties() # Make sure we've added any!
+        item_type_conflict = None
+        if self.category == "staff":
+            # To make staffs be more unique than, say, just a magical quarterstaff
+            # We can sometimes request a "Non-weapon" effect.
+            no_weapon_chance = cfg.getInt("General", "staff_effect_chance")
+            randchoice = random.randint(1,100)
+            if randchoice <= no_weapon_chance:
+                item_type_conflict = "weapon"
         if self.enhancement > 0:
             all_properties.append("enhancement")
         # We can use our previously assembled list of effects conveniently now
@@ -1002,21 +1019,23 @@ class Item:
             itemsubtype=self.subtype, damagetype=self.getDamageType(),
             materialtype=material_type, itemgroup=self.getGroups(),
             properties=all_properties, bonus=(minbudget, budget),
-            effects=all_effects, itemid=self.id, rarity=self.rarity)
+            effects=all_effects, itemid=self.id, rarity=self.rarity,
+            itemtypeconflict=item_type_conflict)
         while new_effect.id is None and minbudget > -10:
             minbudget -= 1
             new_effect = Modifier(category="effect", affix=affix, itemtype=self.category,
             itemsubtype=self.subtype, damagetype=self.getDamageType(),
             materialtype=material_type, itemgroup=self.getGroups(),
             properties=all_properties, bonus=(minbudget, budget),
-            effects=all_effects, itemid=self.id, rarity=self.rarity)
+            effects=all_effects, itemid=self.id, rarity=self.rarity,
+            itemtypeconflict=item_type_conflict)
         return new_effect
     
     def getEnhancement(self, fill=False):
         # Either generates an enhancement bonus, or fills as much of the budget
         # as it can with bonus.
         # First, check to see if we're able to have bonuses.
-        if self.category in WONDROUS_ITEMS:
+        if self.category not in ENH_ITEMS:
             # Wondrous items don't get enhancements.
             return 0
         # Figure out our enhancement limits.
@@ -1095,7 +1114,10 @@ class Item:
         # Simple "No Effect Chance". These items will be material + enhancement
         no_effect_chance = cfg.getInt("General", "no_effect_chance_%s" % self.rarity)
         wi_force_effect = cfg.getBool("WondrousItems", "wi_force_effect")
-        if self.category not in WONDROUS_ITEMS or not wi_force_effect:
+        staff_wand_force_effect = cfg.getBool("General", "staff_wand_force_effect")
+        if (self.category in WONDROUS_ITEMS and not wi_force_effect) \
+            or (self.category in ["staff", "wand"] and not staff_wand_force_effect) \
+            or self.category in ENH_ITEMS:
             rand = random.randint(1,100)
             if rand <= no_effect_chance:
                 # Sorry, friend, you don't get anything fancy today.
@@ -1129,6 +1151,9 @@ class Item:
                         # One None, future Nones. Prevent that.
                         pre_weight = 0
                         last_effect = None
+                    elif prefix.id in self.getEffectIDs():
+                        # We already have this. Ignore it.
+                        last_effect = None
                     elif prefix.bonus <= 0 and no_bonus_count >= max_no_bonus:
                         # We already have our maximum number of 0-bonus effects.
                         budget = self.getBudget()
@@ -1153,6 +1178,9 @@ class Item:
                     if suffix.id is None:
                         # If we get one "None", then any furthers will be none.
                         suf_weight = 0
+                        last_effect = None
+                    elif suffix.id in self.getEffectIDs():
+                        # We already have this. Ignore it.
                         last_effect = None
                     elif suffix.bonus <= 0 and no_bonus_count >= max_no_bonus:
                         # Same as above.
@@ -1185,6 +1213,13 @@ class Item:
         # That should be it.
         budget = self.getBudget()
         return budget
+            
+    def getEffectIDs(self):
+        # Returns the IDs of all effects (prefixes and suffixes) on the item
+        ids = []
+        for effect in self.prefixes + self.suffixes:
+            ids.append(effect.id)
+        return ids
             
     def cleanEffects(self):
         # Removes all current effects and resets them to their default values.
@@ -1472,7 +1507,7 @@ class Item:
                 if recharge[0] == "":
                     recharge[0] = mod[1]
                 else:
-                    recharge[0] = compareDice(recharge, mod[1])
+                    recharge[0] = compareDice(recharge[0], mod[1])
                 if len(mod) > 2:
                     if recharge[1] is None:
                         recharge[1] = int(mod[2])
@@ -1688,14 +1723,14 @@ class Item:
         material_type = []
         for effect in self.prefixes + self.suffixes + [self.material]:
             group += item_data.getList(effect.id, "group")
-            group_conflict += item_data.getList(effect.id, "groupconflict")
+            group_conflict += item_data.getList(effect.id, "group_conflict")
             subtype += item_data.getList(effect.id, "subtype")
-            subtype_conflict += item_data.getList(effect.id, "subtypeconflict")
-            damage_type += item_data.getList(effect.id, "damagetype")
-            damage_type_conflict += item_data.getList(effect.id, "damagetypeconflict")
-            properties += item_data.getList(effect.id, "requiredproperties")
-            property_conflict += item_data.getList(effect.id, "propertyconflict")
-            material_type += item_data.getList(effect.id, "materialtype")
+            subtype_conflict += item_data.getList(effect.id, "item_subtype_conflict")
+            damage_type += item_data.getList(effect.id, "damage_type")
+            damage_type_conflict += item_data.getList(effect.id, "damage_type_conflict")
+            properties += item_data.getList(effect.id, "required_properties")
+            property_conflict += item_data.getList(effect.id, "property_conflict")
+            material_type += item_data.getList(effect.id, "material_type")
         if len(group) == 0:
             group = None
         if len(group_conflict) == 0:
@@ -1823,7 +1858,7 @@ class Item:
                         continue
             if subtype is not None or subtype_conflict is not None:
                 # Functions identical to the above, just for subset.
-                data = item_data.getList(item, "itemsubtype")
+                data = item_data.getList(item, "item_subtype")
                 data = set(data)
                 if subtype is not None:
                     if not subtype.issubset(data):
@@ -1834,7 +1869,7 @@ class Item:
                         continue
             if damage_type is not None or damage_type_conflict is not None:
                 # This is the reverse. The item's damage type has to fit one of ours.
-                data = item_data.getList(item, "damagetype")
+                data = item_data.getList(item, "damage_type")
                 data = set(data)
                 if damage_type is not None:
                     if not data.issubset(damage_type):
@@ -1856,7 +1891,7 @@ class Item:
                         continue
             if material_type is not None:
                 # For material types, there simply needs to be an overlap.
-                data = item_data.getList(item, "materialtype")
+                data = item_data.getList(item, "material_type")
                 data = set(data)
                 if material_type.isdisjoint(data):
                     continue

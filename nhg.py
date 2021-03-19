@@ -89,7 +89,10 @@ class Window (tk.Tk):
         item_list = []
         for item in self.hoard.items:
             item_list.append(item.getName())
-        return "\n".join(item_list)
+        item_list = "\n".join(item_list)
+        while "\n\n" in item_list:
+            item_list = item_list.replace("\n\n", "\n")
+        return item_list
     
     def getHoardTreasures(self, only_gp_value=False):
         treasure_str = "%d total gp value" % (self.hoard.treasure.value + self.hoard.gp)
@@ -97,6 +100,8 @@ class Window (tk.Tk):
         treasure_str += "\n%d gp in treasures" % self.hoard.treasure.value
         if not only_gp_value:
             treasure_str += "\n%s" % self.hoard.treasure.getDescription()
+        while "\n\n" in treasure_str:
+            treasure_str.replace("\n\n", "\n")
         return treasure_str
         
     

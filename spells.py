@@ -113,7 +113,7 @@ class Spell:
                     continue
             # And the item type. Ours only needs to be in the list.
             if item is not None:
-                data = spell_data.getList(spell, "itemtype")
+                data = spell_data.getList(spell, "item_type")
                 if data is None:
                     continue
                 if item not in data:
