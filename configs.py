@@ -8,6 +8,8 @@ import logging
 import os
 # import ui_toolbox as ui
 
+VERSION = "2021.3.XX (Alpha)"
+
 # Start with our actual configurations.
 # We are going to need:
 # General Configuration

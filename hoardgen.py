@@ -2,58 +2,26 @@
 # Generates a random, level-dependent hoard based on input configurations.
 # Designed to pull from either existing items, or from the random item generator
 
-import configparser
+#import configparser
 import random
 import logging
 import os
-import time
+#import time
+import configs
 
-# Some cnstants.
-VERSION = "2021.3.11 (Alpha)" # Just a version number. Calendar Version.
+# Set up our configuration with the new configs files.
+general = configs.CFG(configs.GENERAL)
+generators = configs.CFG(configs.HOARD_GENERATORS)
 
-print("New Hoard Generator starting...")
-
-"""# First, set up logging.
-starttime = time.strftime("%Y %m %d %H %M %S", time.localtime(time.time()))
-# Make sure our logging folder exists.
-if not os.path.isdir("./logs"):
-    os.mkdir("./logs")
-# And start logging.
-logging.basicConfig(filename="./logs/output %s.log" % starttime, filemode='w', level=logging.DEBUG)
-logging.info("Beginning log file for session starting: %s" % starttime)"""
-
-# Now load our configuration.
-cfg = configparser.ConfigParser()
-cfg.read("./config/general.cfg")
-logging.info("Config file loaded: ./config/general.cfg")
-
-# Our max CR. Referenced in Hoard and also from other things (AKA the UI)
-MAXCR = cfg["General"].getint("maxcr")
-
-generators = configparser.ConfigParser()
-generators.read("./config/generators.cfg", encoding="cp1252")
-logging.info("Generator config file loaded.")
-
-"""# Remove any excess log files.
-llist = []
-for l in os.listdir("./logs"):
-    if l[-4:] == ".log":
-        llist.append(l)
-if len(llist) > cfg["General"].getint("logstokeep"):
-    llist.sort(reverse=True) # Sort by oldest, since they're named by time.
-    logs = len(llist)
-    while len(llist) > cfg["General"].getint("logstokeep"):
-        log = llist.pop()
-        os.remove("./logs/%s" % log)
-    logging.info("Removed %d old log files." % (logs - len(llist)))"""
+MAX_CR = general.getInt("General", "max_cr")
 
 # Now load our sub-modules.
 import staticitem # For static, pre-made magic items
 import itemgen # For randomly created magic items
+import spellbook # Spellbooks are neat!
 import treasuregen # For our treasure pile
 import hoardname # For the names. Of our hoards. Of course.
-import pdfwrite # For saving our hoards.
-pdfwrite.NHGVER = VERSION # Tells the PDF generator our main generator version
+
 
 # A function to roll dice.
 def rollDice(dice):
@@ -87,11 +55,11 @@ class Hoard:
         if type(cr) is int:
             if cr < 0:
                 cr = 0
-            elif cr > MAXCR:
-                cr = MAXCR
+            elif cr > MAX_CR:
+                cr = MAX_CR
             self.cr = cr
         else:
-            self.cr = random.randint(0, MAXCR)
+            self.cr = random.randint(0, MAX_CR)
         if type(name) is str:
             self.name = hoardname.HoardName(self.cr, name)
         else:
@@ -110,10 +78,10 @@ class Hoard:
         # Returns which generator we're using depending on CR.
         logging.info("Finding generator for CR %d" % self.cr)
         # We already know we're within the max CR bounds from our init
-        for gen in generators:
+        for gen in generators.config:
             # Get the min and max CRs of the generator.
-            mincr = generators[gen].getint("mincr")
-            maxcr = generators[gen].getint("maxcr")
+            mincr = generators.getInt(gen, "min_cr")
+            maxcr = generators.getInt(gen, "max_cr")
             if mincr is None or maxcr is None:
                 # This isn't a generator. Move along, move along.
                 continue
@@ -122,7 +90,7 @@ class Hoard:
                 return gen
                 # We can stop looking now.
         logging.error("No valid generator found. Using default.")
-        gen = cfg["General"]["defaultgenerator"]
+        gen = general.get("General", "default_generator")
         return gen
                 
     def getValue(self, target):
@@ -131,27 +99,27 @@ class Hoard:
             return 0
         # Returns a value within the set bounds.
         # Get our values. Make sure they're sane, too.
-        dice = generators[self.gen]["%sdice" % target].lower()
-        mult = generators[self.gen].getint("%smultiplier" % target)
+        dice = generators.get(self.gen, "%s_dice" % target).lower()
+        mult = generators.getInt(self.gen, "%s_multiplier" % target)
         if mult is not None:
             mult = max(mult, 1)
         else:
             mult = 1
-        div = generators[self.gen].getint("%sdivisor" % target)
+        div = generators.getInt(self.gen, "%s_divisor" % target)
         if div is not None:
             div = max(div, 1)
         else:
             div = 1
-        tries = generators[self.gen].getint("%stries" % target)
+        tries = generators.getInt(self.gen, "%s_tries" % target)
         if tries is not None:
             tries = max(tries, 1)
         else:
             tries = 1
-        mod = generators[self.gen].getint("%smodifier" % target)
+        mod = generators.getInt(self.gen, "%s_modifier" % target)
         if mod is None:
             mod = 0
-        if generators.has_option(self.gen, "%smaxmin" % target):
-            maxmin = generators[self.gen]["%smaxmin" % target].lower()
+        maxmin = generators.get(self.gen, "%s_max_min" % target)
+        if maxmin is not None:
             if maxmin not in ["max","min"]:
                 maxmin = "min"
         else:
@@ -181,34 +149,29 @@ class Hoard:
         rvalues = {}
         rarities = ["common", "uncommon", "rare", "veryrare", "legendary"]
         rweights = []
-        for r in rarities:
-            weight = generators[self.gen].getint("%swt" % r)
+        for rarity in rarities:
+            weight = generators.getInt(self.gen, "%s_weight" % rarity)
             if weight is not None:
                 rweights.append(weight)
             else:
                 rweights.append(1)
-            value = generators[self.gen].getint("%svalue" % r)
+            value = generators.getInt(self.gen, "%s_value" % rarity)
             if value is not None:
                 if value < 1:
                     value = 1
-                rvalues[r] = value
+                rvalues[rarity] = value
             else:
-                rvalues[r] = 1
-        sources = ["static", "random"]
+                rvalues[rarity] = 1
+        #TODO: Spellbooks.
+        sources = ["static", "random", "spellbook"]
         sweights = []
-        for s in sources:
-            weight = generators[self.gen].getint("%swt" % s)
+        for source in sources:
+            weight = generators.getInt(self.gen, "%s_weight" % source)
             if weight is not None:
                 sweights.append(weight)
             else:
                 sweights.append(1)
-        forcescroll = generators[self.gen].getboolean("forcerandomscroll")
-        if forcescroll is None:
-            forcescroll = False
         # Grab a list of existing items.
-        inames = []
-        for i in self.items:
-            inames.append(i.name)
         # OK, we have our settings. Get our budget.
         budget = self.itemlimit
         # And start adding items.
@@ -233,20 +196,12 @@ class Hoard:
             if source == "static":
                 # A random static item.
                 item = staticitem.Item(rarity=rarity)
-                # No duplicates.
-                if forcescroll and "Spell Scroll" in item.name:
-                    # We have a spell scroll. Give us one with a random spell.
-                    # But first, figure out which one it is.
-                    slevel = int(item.id[-1])
-                    item = itemgen.ForceScroll(slevel)
             elif source == "random":
-                # Depending on settings, this can return an item of lower rarity
-                # But that's dealt with later.
-                item = itemgen.getItem(rarity=rarity)
-                while item.name in inames:
-                    item = itemgen.getItem(rarity=rarity)
-            budget -= rvalues[item.rarity]
-            inames.append(item.name)
+                # This is unlikely to return an item of lower rarity, but maybe.
+                item = itemgen.Item(rarity=rarity)
+            elif source == "spellbook":
+                item = spellbook.Spellbook(rarity=rarity)
+            budget -= rvalues[item.rarity] # The actual item rarity. Just in case it's different.
             self.items.append(item)
         return budget
         
@@ -254,7 +209,7 @@ class Hoard:
         # Returns a string of each item's name.
         items = []
         for i in self.items:
-            items.append(i.name)
+            items.append(i.getName())
         items = "\n".join(items)
         return items
         
@@ -275,50 +230,6 @@ class Hoard:
                 l = random.randint(97,122)
             seed += chr(l)
         return seed
-
-    def getSaveName(self):
-        # Gets a filename for the, well. File.
-        # Simply removes forbidden characters.
-        forbidden = [";",":","/","\\","<",">",'"',"'","|","?","*",",","!"]
-        name = self.name.name
-        for f in forbidden:
-            name.replace(f, "")
-        while name[-1] == " ":
-            name = name[:-1]
-        while name[-1] == ".":
-            name = name[:-1]
-        name += " (CR %d)" % self.cr
-        return name
-    
-    def saveHoard(self, savename=None, savedir=None):
-        # Pulls information and shoves it into the pdf writer for, uh. Writing.
-        # First, set up the basic information.
-        pdf = pdfwrite.PDF(self.name.name, self.seed, self.cr)
-        # Now we're going to print the information on the gold and treasure.
-        trdesc = "%d gold pieces\n" % self.gp + self.treasure.description
-        trinfo = "Treasure (%d gp value):" % (self.treasure.value + self.gp)
-        pdf.addItem(iinfo=trinfo, idesc=trdesc, indent=False)
-        # And now the items.
-        for i in self.items:
-            indent = True
-            if i.id == "spellbookitem":
-                # Don't indent our list of spells.
-                indent = False
-            pdf.addItem(iname=i.name, iinfo=i.info, idesc=i.description, indent=indent)
-        # And save it.
-        if type(savename) is not str:
-            savename = self.getSaveName() + ".pdf"
-        if savename[-4:] != ".pdf":
-            savename += ".pdf"
-        folder = cfg["Folders"]["savefolder"]
-        if not os.path.exists("./%s" % folder):
-            os.mkdir("./%s" % folder)
-        if savedir is None:
-            savename = "./%s/%s" % (folder, savename)
-        else:
-            savename = "%s/%s" % (savedir, savename)
-        pdf.output(savename)
-        return True
         
         
         

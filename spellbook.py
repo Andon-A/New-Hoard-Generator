@@ -15,6 +15,8 @@ class Spellbook():
         # Really, they're not that complicated.
         if rarity is None or rarity not in RARITIES:
             self.rarity = random.choice(RARITIES)
+        else:
+            self.rarity = rarity
         if level is not None:
             # Level overrides rarity.
             self.level = level
@@ -23,20 +25,27 @@ class Spellbook():
             self.level = self.getLevel()
         self.getSpells(self.level)
         self.name = self.getName()
+        self.source = "Generated Spellbook"
+        self.id = "spellbook"
         self.info = "Spellbook, %s" % self.rarity
         self.description = self.getDescription()
         
     def setRarity(self):
         # Sets the rarity of ourselves depending on our level.
         if self.level > 16:
+            # Legendary: Level 16+
             return "legendary"
         elif self.level > 10:
+            # Very Rare: Level 11-15
             return "veryrare"
         elif self.level > 6:
+            # Rare: Level 6-10
             return "rare"
         elif self.level > 2:
+            # Uncommon: Level 3-5
             return "uncommon"
         else:
+            # Common: Level 1-2
             return "common"
         
     def getLevel(self):

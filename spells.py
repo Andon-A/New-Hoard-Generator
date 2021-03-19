@@ -14,19 +14,20 @@ CLASSES = []
 SPELL_SCHOOLS = []
 # Fill in those schools.
 
-for spell in configs.SPELL_DATA:
-    # For itemgen purposes, configs.SPELL_DATA use
-    school = configs.SPELL_DATA[spell].get("school")
+spell_data = configs.CFG(configs.SPELL_DATA)
+
+# Update our class lists and spell schools.
+for spell in spell_data.config:
+    school = spell_data.get(spell, "school")
     if school not in SPELL_SCHOOLS and school is not None:
         SPELL_SCHOOLS.append(school)
-    classes = configs.SPELL_DATA[spell].get("class")
+    classes = spell_data.get(spell, "class")
     if classes is not None:
         classes = classes.split(";")
-        for c in classes:
-            if c not in CLASSES:
-                CLASSES.append(c)
+        for cl in classes:
+            if cl not in CLASSES:
+                CLASSES.append(cl)
 
-# OK, now we're all filled in.
 
 # Now for our Spell class!
 class Spell:
@@ -34,11 +35,11 @@ class Spell:
             # Grabs a spell that fits the above filters.
             self.id = self.getSpell(schools, level, classlist, itemtype)
             if self.id is not None:
-                self.name = configs.SPELL_DATA[self.id].get("name")
-                self.level = configs.SPELL_DATA[self.id].getint("level")
-                self.school = configs.SPELL_DATA[self.id].get("school")
-                self.classlist = configs.getList(self.id, "class", configs.SPELL_DATA)
-                self.itemtypes = configs.getList(self.id, "itemtype", configs.SPELL_DATA)
+                self.name = spell_data.get(self.id, "name")
+                self.level = spell_data.getInt(self.id, "level")
+                self.school = spell_data.get(self.id, "school")
+                self.classlist = spell_data.getList(self.id, "class")
+                self.itemtypes = spell_data.getList(self.id, "itemtype")
             else:
                 self.name = ""
                 self.level = None
@@ -86,14 +87,14 @@ class Spell:
             if schools is not None:
                 # Each spell belongs to precisely one school.
                 # But we might have a few schools we can match.
-                data = configs.SPELL_DATA[spell].get("school")
+                data = spell_data.get(spell, "school")
                 if data not in schools:
                     # Our school isn't present. 
                     continue
             # Check the level.
             if level is not None:
                 # Level must be at least the min level and at most the max level
-                data = configs.SPELL_DATA[spell].getint("level")
+                data = spell_data.getInt(spell, "level")
                 if data is None:
                     # Spell has no level, so is invalid.
                     continue
@@ -102,27 +103,26 @@ class Spell:
                     continue
             # Check the class list.
             if classlist is not None:
-                data = configs.SPELL_DATA[spell].get("class")
+                data = spell_data.getList(spell, "class")
                 if data is None:
                     continue
-                data = set(data.split(";"))
+                data = set(data)
                 # We need an overlap, but any overlap will do.
                 if data.isdisjoint(classlist):
                     # No overlap here though.
                     continue
             # And the item type. Ours only needs to be in the list.
             if item is not None:
-                data = configs.SPELL_DATA[spell].get("itemtype")
+                data = spell_data.getList(spell, "itemtype")
                 if data is None:
                     continue
-                data = data.split(";")
                 if item not in data:
                     # But it's not. :(
                     continue
             # If we've reached here, then, well. We have a valid spell!
             # Add the spell and its chance weight to the appropriate lists.
             spell_list.append(spell)
-            chance = configs.SPELL_DATA[spell].getint("chance")
+            chance = spell_data.getInt(spell, "chance")
             if chance is None:
                 spell_weights.append(1)
             else:

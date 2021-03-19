@@ -15,6 +15,7 @@ class Item:
     def __init__(self, rarity=None, category=None):
         self.id = self.getItem(rarity, category)
         self.name = None
+        self.name_set = False
         self.category = None
         self.rarity = None
         self.description = None
@@ -30,7 +31,7 @@ class Item:
     
     def getName(self):
         name = self.name
-        if cfg.getBool("General", "gen_scroll_spells") and self.category == "scroll":
+        if cfg.getBool("General", "gen_scroll_spells") and self.category == "scroll" and not self.name_set:
             # Scrolls are all "Spell scroll (X Level)" so that's easy to replace.
             p1 = name.find("(")
             if p1 != -1:
@@ -40,7 +41,9 @@ class Item:
                 else:
                     level = int(level)
                 spell = spells.Spell(level=level)
-                name = self.name[:p1] + "(%s)" % spell.name        
+                name = self.name[:p1] + "(%s)" % spell.name      
+                self.name = name # Lock our spell scroll in.
+                self.name_set = True
         return name
     
     def getDescription(self):
