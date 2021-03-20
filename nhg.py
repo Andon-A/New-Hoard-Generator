@@ -56,6 +56,7 @@ class Window (tk.Tk):
         self.grid_propagate(0)
         # Some hoard stuff
         self.hoard_saved = False
+        self.hoard_edited = False
         self.hoard = None
         # Window things.
         self.minsize(1300, 800)
@@ -235,7 +236,10 @@ class inputPane(tk.Frame):
         filename = filedialog.asksaveasfilename(filetypes=files, 
             defaultextension=files, initialdir=DEFAULT_SAVE_PATH,
             initialfile="%s (%d).pdf" % (hoard.name.name, hoard.cr))
-        pdf = pdfwrite.PDF(hoard.name.name, hoard.seed, hoard.cr)
+        seed = hoard.seed
+        if self.master.hoard_edited:
+            seed += " (edited)"
+        pdf = pdfwrite.PDF(hoard.name.name, seed, hoard.cr)
         # Get the treasure info and save it.
         treasure_info = "Treasure (%d gp total value)" % (hoard.treasure.value + hoard.gp)
         treasure_desc = "%d gold pieces\n%d gp in treasures" % (hoard.gp, hoard.treasure.value)
@@ -294,6 +298,7 @@ class inputPane(tk.Frame):
         self.updateTreasures()
         self.updateItems()
         self.edit_pane.updateDropDown()
+        self.edit_pane.edit_frame.destroy()
         
     def updateEntry(self, entry, info):
         state = entry["state"]
@@ -363,13 +368,15 @@ class textBoxPane(tk.Frame):
         self.text_box.configure(state="disabled")
 
 class editPane(tk.Frame):
-    def __init__(self, main, label, text_frame):
+    def __init__(self, main, label, text_frame, item_frame):
         tk.Frame.__init__(self, master=main)
         self.grid_propagate(0)
         self.edit_item = None
         self.original_item = None
+        self.edited = False
         # Set up some basic info. We need to know what text box we'll use.
         self.text_frame = text_frame
+        self.item_pane = item_frame # We need to update this occasionally
         # Now, top to bottom. First, the label.
         self.label = ttk.Label(self, text=label, font=main.large_font)
         self.label.configure(anchor="center")
@@ -378,13 +385,9 @@ class editPane(tk.Frame):
         self.var.set("Select an item to view")
         self.drop_down = tk.OptionMenu(self, self.var, "No items available")
         # We'll put other buttons in here.
-        # Set up the grid. 5 columns, 90px wide each
-        # Rows can be fine auto-adjusting.
-        self.grid_columnconfigure(0, minsize=90)
-        self.grid_columnconfigure(1, minsize=90)
-        self.grid_columnconfigure(2, minsize=90)
-        self.grid_columnconfigure(3, minsize=90)
-        self.grid_columnconfigure(4, minsize=90)
+        self.edit_frame = tk.Frame(self) # This'll be immediately destroyed, but oh well.
+        # Set up the grid.
+        self.grid_columnconfigure(0, weight=1)
         # Put our stuff in.
         self.label.grid(row=0, column=0, columnspan=5, sticky="EW")
         self.drop_down.grid(row=1, column=0, columnspan=5, padx=(0,10), sticky="EW")
@@ -406,9 +409,17 @@ class editPane(tk.Frame):
         
     def inspectItem(self, item):
         # Gets some information and then shows the item.
-        if item.source == "Generated Item":
+        if item.source == "Generated Item" and item != self.edit_item:
+            self.edited = False
             self.original_item = item
             self.edit_item = copy.deepcopy(item)
+            self.getEditButtons(self.edit_item)
+        elif item.source == "Generated Item":
+            self.getEditButtons(item)
+        else:
+            self.edited = False
+            self.edit_frame.destroy()
+            self.edit_frame = tk.Frame(self)
         self.var.set(item.getName())
         item_desc = ""
         item_desc += item.source + "\n\n"
@@ -417,8 +428,306 @@ class editPane(tk.Frame):
         if item.getDescription() is not None:
             item_desc += item.getDescription().replace("\n","\n\n")
         self.text_frame.updateText(item_desc)
+    
+    def getEditButtons(self, item):
+        # Purge anything we may have previously
+        self.edit_frame.destroy()
+        # Make ourselves a frame to put everything in.
+        self.edit_frame = tk.Frame(self)
+        self.edit_frame.grid_columnconfigure(0, weight=1)
+        self.edit_frame.grid(row=2, column=0, columnspan=5, sticky="NSEW")
+        # Get the information first.
+        bonus_frame = tk.Frame(self.edit_frame) # So we don't have to argue with layout
+        bonus_frame.grid_columnconfigure(0, minsize=120)
+        bonus_frame.grid_columnconfigure(1, minsize=115)
+        bonus_frame.grid_columnconfigure(2, minsize=115)
+        bonus_frame.grid_columnconfigure(3, minsize=100)
+        rarity_var = tk.StringVar(self.edit_frame)
+        rarities = ["Common","Uncommon","Rare","Very Rare","Legendary"]
+        clean_rarity = item.rarity.capitalize()
+        if clean_rarity == "Veryrare":
+            clean_rarity = "Very Rare"
+        rarity_dropdown = tk.OptionMenu(bonus_frame, rarity_var, clean_rarity)
+        menu = rarity_dropdown["menu"]
+        menu.delete(0, tk.END)
+        for rarity in rarities:
+            menu.add_command(label=rarity, command = lambda value=rarity : self.setRarity(item, value))
+        rarity_var.set(clean_rarity)
+        max_bonus_label = ttk.Label(bonus_frame, text="Max Bonus: %d" % item.getMaxBonus(item.rarity),
+            font=self.master.standard_font)
+        current_bonus_label = ttk.Label(bonus_frame, text="Current Bonus: %d" % item.getBonus(),
+            font=self.master.standard_font)
+        avail_bonus_label = ttk.Label(bonus_frame, text="Available: %d" % item.getBudget(),
+            font=self.master.standard_font)
+        # Put them in the frame.
+        rarity_dropdown.grid(row=0, column=0, sticky="EW")
+        max_bonus_label.grid(row=0, column=1, sticky="W")
+        current_bonus_label.grid(row=0, column=2)
+        avail_bonus_label.grid(row=0, column=3, sticky="E", padx=(0, 10))
+        # Gets a button for each of the following: Base Item, Material, and any prefixes or suffixes
+        item_label = ttk.Label(self.edit_frame, text="Base Item: %s" % item.item_name, 
+            font = self.master.small_font)
+        item_cost_label = ttk.Label(self.edit_frame, text="Bonus: %d" % item.item_bonus, 
+            font = self.master.small_font)
+        item_reroll_button = tk.Button(self.edit_frame, text="Randomize", relief=tk.RAISED,
+            font=self.master.small_font, command = lambda : self.rerollRandomItem(item))
+        item_replace_button = tk.Button(self.edit_frame, text="Replace", relief=tk.RAISED,
+            font=self.master.small_font,  command = lambda : self.replaceItem(item))
+        material_label = ttk.Label(self.edit_frame, text="Material: %s" % str(item.material.name),
+            font = self.master.small_font)
+        material_cost_label = ttk.Label(self.edit_frame, text="Bonus: %d" % item.material.bonus,
+            font = self.master.small_font)
+        material_reroll_button = tk.Button(self.edit_frame, text="Randomize", relief=tk.RAISED, 
+            font=self.master.small_font, command = lambda : self.rerollRandomEffect(item, item.material))
+        material_replace_button = tk.Button(self.edit_frame, text="Replace", relief=tk.RAISED,
+            font=self.master.small_font, command = lambda : self.replaceEffect(item, item.material))
+        material_remove_button = tk.Button(self.edit_frame, text="Remove", relief=tk.RAISED,
+            font=self.master.small_font, command = lambda : self.removeEffect(item, item.material))
+        # See if we need to have buttons available.
+        if len(item.spells) == 0 and len(item.random_lists) == 0:
+            # No random things to randomize.
+            item_reroll_button.configure(state="disabled")
+        if len(item.material.spells) == 0 and len(item.material.random_lists) == 0:
+            material_reroll_button.configure(state="disabled")
+        if len(item.material_type) == 0:
+            # We'll never get a material type, so turn off that button.
+            material_replace_button.configure(state="disabled")
+        if item.material is None:
+            # Can't remove something that's not there!
+            material_remove_button.configure(state="disabled")
+        elif item.material.id is None:
+            material_remove_button.configure(state="disabled")
+        # Put them in the box.
+        bonus_frame.grid(row=0, column=0, columnspan=5, sticky="EW", pady=4)
+        item_label.grid(row=2, column=0, columnspan=5, sticky="W")
+        item_cost_label.grid(row=2, column=0, sticky="E")
+        item_reroll_button.grid(row=2, column=2)
+        item_replace_button.grid(row=2, column=3)
+        material_label.grid(row=3, column=0, columnspan=5, sticky="W")
+        material_cost_label.grid(row=3, column=0, sticky="E")
+        material_reroll_button.grid(row=3, column=2)
+        material_replace_button.grid(row=3, column=3)
+        material_remove_button.grid(row=3, column=4, padx=(0, 10))
+        # Now. For the effects.
+        # We'll need to know what row we're on.
+        row = 4
+        for effect in item.prefixes + item.suffixes:
+            # Get the effect info
+            if effect in item.prefixes:
+                effect_label = ttk.Label(self.edit_frame, text="Prefix: %s" % effect.prefix, font=self.master.small_font)
+            elif effect in item.suffixes:
+                effect_label = ttk.Label(self.edit_frame, text="Suffix: %s" % effect.suffix, font=self.master.small_font)
+            effect_cost_label = ttk.Label(self.edit_frame, text="Bonus: %d" % effect.bonus, font=self.master.small_font)
+            effect_reroll_button = tk.Button(self.edit_frame, text="Randomize", relief=tk.RAISED, font=self.master.small_font,
+                command = lambda value=effect : self.rerollRandomEffect(item, value))
+            effect_replace_button = tk.Button(self.edit_frame, text="Replace", relief=tk.RAISED, font=self.master.small_font,
+                command = lambda value=effect : self.replaceEffect(item, value))
+            effect_remove_button = tk.Button(self.edit_frame, text="Remove", relief=tk.RAISED, font=self.master.small_font,
+                command = lambda value=effect : self.removeEffect(item, value))
+            # Do we have to turn any of them off?
+            if len(effect.spells) == 0 and len(effect.random_lists) == 0:
+                # No randomizations.
+                effect_reroll_button.configure(state="disabled")
+            # We'll always be able to remove or replace the effect, so don't worry about those.
+            # Put them on the grid.
+            effect_label.grid(row=row, column=0, columnspan=5, sticky="W")
+            effect_cost_label.grid(row=row, column=0, sticky="E")
+            effect_reroll_button.grid(row=row, column=2)
+            effect_replace_button.grid(row=row, column=3)
+            effect_remove_button.grid(row=row, column=4, padx=(0, 10))
+            # Increase the row for the next effect
+            row += 1
+        # Now for the "add effect" box
+        add_frame = tk.Frame(self.edit_frame)
+        add_frame.grid_columnconfigure(0, minsize=45)
+        add_frame.grid_columnconfigure(1, minsize=90)
+        add_frame.grid_columnconfigure(2, minsize=90)
+        add_frame.grid_columnconfigure(3, minsize=90)
+        add_frame.grid_columnconfigure(4, minsize=90)
+        add_frame.grid_columnconfigure(5, minsize=45)
+        prefix_text = "Prefixes: %d" % len(item.prefixes)
+        if item.max_prefix is not None:
+            prefix_text += "/%s" % str(item.max_prefix)
+        suffix_text = "Suffixes: %d" % len(item.suffixes)
+        if item.max_prefix is not None:
+            suffix_text += "/%s" % str(item.max_suffix)
+        effect_text = "Effects: %d" % len(item.suffixes + item.prefixes)
+        max_effects = item.getMaxEffects()
+        if max_effects is not None:
+            effect_text += "/%d" % max_effects
+        prefix_label = ttk.Label(add_frame, text=prefix_text, font=self.master.small_font)
+        suffix_label = ttk.Label(add_frame, text=suffix_text, font=self.master.small_font)
+        effect_label = ttk.Label(add_frame, text=effect_text, font=self.master.small_font)
+        enh_label = ttk.Label(add_frame, text="Enhancement", font=self.master.small_font)
+        add_prefix_button = tk.Button(add_frame, text="Add\nPrefix", relief=tk.RAISED,
+            font=self.master.standard_font, command = lambda : self.addPrefix(item))
+        add_suffix_button = tk.Button(add_frame, text="Add\nSuffix", relief=tk.RAISED,
+            font=self.master.standard_font, command = lambda : self.addSuffix(item))
+        add_autofill_button = tk.Button(add_frame, text="Autofill\nEffects", relief=tk.RAISED,
+            font=self.master.standard_font, command = lambda : self.autofillItem(item))
+        enh_increase_button = tk.Button(add_frame, text="Increase", relief=tk.RAISED,
+            font=self.master.standard_font, command = lambda : self.adjustEnh(item, 1))
+        enh_decrease_button = tk.Button(add_frame, text="Decrease", relief=tk.RAISED,
+            font=self.master.standard_font, command = lambda : self.adjustEnh(item, -1))
+        # Do any of them need to be disabled?
+        if item.enhancement == 0:
+            enh_decrease_button.configure(state="disabled")
+        if item.enhancement == item.getMaxEnhancement():
+            enh_increase_button.configure(state="disabled")
+        if not item.can_have_enh:
+            enh_increase_button.configure(state="disabled")
+        if item.getBudget() < 0:
+            # Nope, too many things!
+            add_prefix_button.configure(state="disabled")
+            add_suffix_button.configure(state="disabled")
+        if item.getBudget() <= 0:
+            # Autofill shouldn't be used here.
+            add_autofill_button.configure(state="disabled")
+            enh_increase_button.configure(state="disabled")
+        if item.max_effects is not None:
+            if len(item.prefixes) + len(item.suffixes) >= max_effects:
+                # Too many effects. Sorry, I don't make the rules. (No, wait, I totally do here)
+                add_prefix_button.configure(state="disabled")
+                add_suffix_button.configure(state="disabled")
+                add_autofill_button.configure(state="disabled")
+        # Have we brought too many prefixes to the party?
+        if item.max_prefix is not None:
+            if len(item.prefixes) >= item.max_prefix:
+                add_prefix_button.configure(state="disabled")
+        # What about suffixes?
+        if item.max_suffix is not None:
+            if len(item.suffixes) >= item.max_suffix:
+                add_suffix_button.configure(state="disabled")
+        enh_label.grid(row=0, column=1)
+        prefix_label.grid(row=0, column=2)
+        suffix_label.grid(row=0, column=3)
+        effect_label.grid(row=0, column=4)
+        enh_increase_button.grid(row=1, column=1, sticky="NSEW")
+        enh_decrease_button.grid(row=2, column=1, sticky="NSEW")
+        add_prefix_button.grid(row=1, column=2, rowspan=2, sticky="NSEW")
+        add_suffix_button.grid(row=1, column=3, rowspan=2, sticky="NSEW")
+        add_autofill_button.grid(row=1, column=4, rowspan=2, sticky="NSEW")
+        add_frame.grid(row=row, column=0, columnspan=5, sticky="EW", pady=(10,0))
+        row += 1
+        
+        # Our save and reset buttons for the item
+        # Put them in their own frame so we're not stuck with the layout of the above buttons
+        save_frame = tk.Frame(self.edit_frame)
+        save_frame.grid_columnconfigure(0, minsize=90)
+        save_frame.grid_columnconfigure(1, minsize=90)
+        save_frame.grid_columnconfigure(2, minsize=90)
+        save_frame.grid_columnconfigure(3, minsize=90)
+        save_frame.grid_columnconfigure(4, minsize=90)
+        save_button = tk.Button(save_frame, text="Save Item", relief=tk.RAISED,
+            font=self.master.standard_font, command = lambda value=item : self.saveItem(value))
+        reset_button = tk.Button(save_frame, text="Reset Item", relief=tk.RAISED,
+            font=self.master.standard_font, command = self.resetItem)
+        # If nothing's changed, turn them off.
+        if not self.edited:
+            reset_button.configure(state="disabled")
+            save_button.configure(state="disabled")
+        if item.getBudget() < 0:
+            save_button.configure(state="disabled")
+        save_button.grid(row=0, column=1, sticky="EW")
+        reset_button.grid(row=0, column=3, sticky="EW")
+        save_frame.grid(row=row, column=0, columnspan=5, sticky="EW")
+    
+    def updateEdit(self, item):
+        # Updates our displays for the new item.
+        self.edit_item = item
+        self.getEditButtons(item)
+        self.inspectItem(item)
+    
+    def saveItem(self, item):
+        # Saves the item to the hoard. The updates our displays.
+        self.edit_item = item
+        index = -1
+        for r in range(0, len(self.master.hoard.items)):
+            if self.master.hoard.items[r] == self.original_item:
+                self.master.hoard.items[r] = self.edit_item
+        self.original_item = self.edit_item
+        self.edit_item = copy.deepcopy(self.original_item)
+        items = self.master.getHoardItems()
+        self.updateDropDown()
+        self.var.set(self.edit_item.getName())
+        self.inspectItem(self.edit_item)
+        self.item_pane.updateText(items)
+        self.master.hoard_edited = True
+        self.edited = False
+    
+    def addSuffix(self, item):
+        effect = item.getAffix("suffix")
+        if effect.id is not None:
+            item.suffixes.append(effect)
+        self.updateEdit(item)
+    
+    def addPrefix(self, item):
+        effect = item.getAffix("prefix")
+        if effect.id is not None:
+            item.prefixes.append(effect)
+        self.updateEdit(item)
+        
+    def autofillItem(self, item):
+        item.generateEffects()
+        self.updateEdit(item)
+    
+    def resetItem(self):
+        # Resets the edited item back to its original state.
+        self.edit_item = copy.deepcopy(self.original_item)
+        self.edited = False
+        self.updateEdit(self.edit_item)
+        
+    def setRarity(self, item, rarity):
+        rarity = rarity.lower().replace(" ","")
+        item.rarity = rarity
+        self.edited = True
+        self.updateEdit(item)
+    
+    def adjustEnh(self, item, adjust):
+        item.enhancement = item.enhancement + adjust
+        self.edited = True
+        self.updateEdit(item)
+    
+    def replaceEffect(self, item, effect):
+        # Replaces the effect on the item with another one.
+        if effect.category == "material":
+            # We're replacing the material
+            item.replaceAffix(effect)
+        elif effect.category == "effect":
+            item.replaceAffix(effect)
+        self.edited = True
+        self.updateEdit(item)
+    
+    def removeEffect(self, item, effect):
+        # Removes the effect from the item
+        if effect.category == "material":
+            # We always have to have a material, so generate an empty one.
+            item.material = item.getEmptyMaterial()
+        elif effect.category == "effect":
+            # These we don't have to replace.
+            item.removeEffect(effect)
+        self.edited = True
+        self.updateEdit(item)
+        
+    def rerollRandomEffect(self, item, effect):
+        # Re-rolls any random choices on the effect.
+        effect.rerollRandom(item.id)
+        self.edited = True
+        self.updateEdit(item)
+    
+    def replaceItem(self, item):
+        # Replaces the base item of the... item.
+        item.replaceItem()
+        self.edited = True
+        self.updateEdit(item)
+    
+    def rerollRandomItem(self, item):
+        # Re-rolls all random choices and spells on the item.
+        item.rerollRandom()
+        self.edited = True
+        self.updateEdit(item)
+        pass
 
-    #TODO: Editing the item.
 
 class emptyPane(tk.Frame):
     # An empty frame. How exciting.
@@ -434,7 +743,7 @@ items = textBoxPane(main_window, "Items")
 treasures = textBoxPane(main_window, "Treasures")
 # Right column. Item Editor and Inspector.
 item_inspector = textBoxPane(main_window, fixed_width=True)
-item_edit = editPane(main_window, label="Item Editor", text_frame=item_inspector)
+item_edit = editPane(main_window, label="Item Editor", text_frame=item_inspector, item_frame=items)
 # Left Column. Input ties into the others, so must come last.
 input = inputPane(main_window, items, treasures, item_edit)
 status = emptyPane(main_window)

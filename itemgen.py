@@ -206,9 +206,10 @@ class Modifier:
         bonus=None, affix=None, effects=None, itemid=None, rarity=None, force_none=False):
         # Set up our empty variables.
         self.emptyValues()
+        self.category = category
         # Well, that's a lot of stuff!
         # Grab ourselves an ID.
-        if force_none:
+        if not force_none:
             self.id = self.getID(category, itemtype, itemsubtype, damagetype,
                 materialtype, itemgroup, properties, bonus, affix, effects, itemid,
                 rarity=rarity, itemtypeconflict=itemtypeconflict)
@@ -228,6 +229,7 @@ class Modifier:
         self.spells = {}
         self.attunement = None
         self.material_type = None
+        self.affix = None
    
     def setValues(self, itemid):
         if self.id is None:
@@ -243,6 +245,15 @@ class Modifier:
         if self.category == "material":
             # Effects don't have a material type since they're not, well. A material.
             self.material_type = item_data.getList(self.id, "material_type")
+        self.name = self.getString("name")
+        self.prefix = self.getString("prefix")
+        self.suffix = self.getString("suffix")
+    
+    def rerollRandom(self, itemid):
+        # Re-rolls the spells and random choice.
+        self.spells = {}
+        self.getModifiers(itemid) # Don't need to reassign the modifiers
+        self.choices = self.chooseRandom()
         self.name = self.getString("name")
         self.prefix = self.getString("prefix")
         self.suffix = self.getString("suffix")
@@ -510,14 +521,16 @@ class Modifier:
             if itemtype is not None or itemtypeconflict is not None:
                 # Grab the data from the item.
                 data = item_data.getList(mod, "item_type")
-                if itemtype not in data and len(data) > 0:
-                    # Our itemtype doesn't fit.
-                    continue
-                itemtypeconflict = set(itemtypeconflict)
-                data = set(data)
-                if not data.isdisjoint(itemtypeconflict):
-                    # There's an overlap and that's bad.
-                    continue
+                if itemtype is not None:
+                    if itemtype not in data and len(data) > 0:
+                        # Our itemtype doesn't fit.
+                        continue
+                if itemtypeconflict is not None:
+                    itemtypeconflict = set(itemtypeconflict)
+                    data = set(data)
+                    if not data.isdisjoint(itemtypeconflict):
+                        # There's an overlap and that's bad.
+                        continue
             if itemsubtype is not None:
                 # Same deal here, except we have our own list.
                 # The effect must be wholly contained in the filter.
@@ -658,6 +671,8 @@ class Item:
             self.getValues()
         self.generateEffects()
         self.rarity = self.updateRarity()
+        # Max effects might change depending on rarity changes, so update it.
+        self.max_effects = cfg.getInt("General", "max_effects_%s" % self.rarity)
     
     def emptyValues(self):
         # Sets the basic values. Every item must have all of these.
@@ -701,6 +716,9 @@ class Item:
         self.ac = None
         self.min_str = None
         self.stealth_penalty = None
+        self.max_prefix = None
+        self.max_suffix = None
+        self.can_have_enh = False
     
     def getValues(self):
         # Gets our values.
@@ -730,9 +748,17 @@ class Item:
         # Armor (& Shield)
         self.ac = item_data.getInt(self.id, "armor_class")
         self.min_str = item_data.getInt(self.id, "required_strength")
+        if self.category not in WONDROUS_ITEMS:
+            self.max_prefix = cfg.getInt("General", "max_prefix")
+            self.max_suffix = cfg.getInt("General", "max_suffix")
+        if self.category in ENH_ITEMS:
+            self.can_have_enh = True
         # Name and Description. Always last, since sometimes they depend on things.
         self.item_name = self.getString("name")
         self.item_description = self.getString("Description")
+    
+    def getMaxEffects(self):
+        return cfg.getInt("General", "max_effects_%s" % self.rarity)
     
     def isMagic(self):
         # Checks to see if the item is magic in any way.
@@ -773,6 +799,14 @@ class Item:
             if rarity is not None:
                 logging.debug("Rarity %s invalid. Choosing one." % str(rarity))
             return random.choice(RARITY_LIST)           
+    
+    def rerollRandom(self):
+        # Re-chooses random spells and random list choices.
+        self.spells = {}
+        self.getItemModifiers() # This re-does the spells.
+        self.choices = self.chooseRandom()
+        self.item_name = self.getString("name")
+        self.item_description = self.getString("Description")
     
     def getItemModifiers(self):
         # Returns the pre-programmed effects, if they're available.
@@ -936,7 +970,18 @@ class Item:
         for effect in self.prefixes + self.suffixes:
             if effect is not None:
                 bonus += effect.bonus
+        bonus += self.enhancement
         return bonus
+    
+    def getMaxBonus(self, rarity):
+        # Returns the maximum bonus for the current rarity.
+        max_bonus = cfg.getInt("General", "max_bonus_%s" % rarity)
+        return max_bonus
+    
+    def getEmptyMaterial(self):
+        # Replaces the material with an empty version, AKA "No material"
+        empty_mat = Modifier(category="material", force_none=True)
+        return empty_mat
     
     def getMaterial(self):
         # This gets our material, or gets a new material
@@ -970,11 +1015,49 @@ class Item:
             # Work our way down
             minbudget -= 1
             new_mat = Modifier(category="material", itemtype=self.category,
-            itemsubtype=self.subtype, damagetype=self.getDamageType(),
-            materialtype=self.material_type, itemgroup=self.getGroups(),
-            properties=all_properties, bonus=(min_budget, budget),
-            effects=all_effects, itemid=self.id, rarity=self.rarity)
+                itemsubtype=self.subtype, damagetype=self.getDamageType(),
+                materialtype=self.material_type, itemgroup=self.getGroups(),
+                properties=all_properties, bonus=(min_budget, budget),
+                effects=all_effects, itemid=self.id, rarity=self.rarity)
+        if self.material is not None:
+            # We're replacing a material. Try and make sure it's not the same one.
+            tries = 10
+            while new_mat.id == self.material.id and tries > 0:
+                new_mat = Modifier(category="material", itemtype=self.category,
+                    itemsubtype=self.subtype, damagetype=self.getDamageType(),
+                    materialtype=self.material_type, itemgroup=self.getGroups(),
+                    properties=all_properties, bonus=(min_budget, budget),
+                    effects=all_effects, itemid=self.id, rarity=self.rarity)
+                tries -= 1
         return new_mat
+    
+    def replaceAffix(self, affix):
+        # Replaces the given affix.
+        if affix == self.material:
+            # We're replacing our material. Neat. Also easy.
+            self.material = self.getMaterial()
+            return True
+        # OK, so our effects. Find out which one it is
+        index = -1
+        if affix.affix == "prefix":
+            for r in range(0, len(self.prefixes)):
+                if affix == self.prefixes[r]:
+                    index = r
+                    break
+        elif affix.affix == "suffix":
+            for r in range(0, len(self.suffixes)):
+                if affix == self.suffixes[r]:
+                    index = r
+                    break
+        if index == -1:
+            # Affix not found.
+            return False
+        new_affix = self.getAffix(affix.affix, effect=affix)
+        if affix.affix == "prefix":
+            self.prefixes[index] = new_affix
+        elif affix.affix == "suffix":
+            self.suffixes[index] = new_affix
+        return True
     
     def getAffix(self, affix, effect=None):
         # This works similar to our material grabber, but gets an effect
@@ -1035,13 +1118,27 @@ class Item:
             properties=all_properties, bonus=(minbudget, budget),
             effects=all_effects, itemid=self.id, rarity=self.rarity,
             itemtypeconflict=item_type_conflict)
+        if effect is not None:
+            while new_effect.id == effect.id:
+                # Don't give us the same one!
+                new_effect = Modifier(category="effect", affix=affix, itemtype=self.category,
+                itemsubtype=self.subtype, damagetype=self.getDamageType(),
+                materialtype=material_type, itemgroup=self.getGroups(),
+                properties=all_properties, bonus=(minbudget, budget),
+                effects=all_effects, itemid=self.id, rarity=self.rarity,
+                itemtypeconflict=item_type_conflict)
+        new_effect.affix = affix
         return new_effect
+    
+    def getMaxEnhancement(self):
+        weights = cfg.getList("Effects", "enh_weights")
+        return len(weights)
     
     def getEnhancement(self, fill=False):
         # Either generates an enhancement bonus, or fills as much of the budget
         # as it can with bonus.
         # First, check to see if we're able to have bonuses.
-        if self.category not in ENH_ITEMS:
+        if not self.can_have_enh:
             # Wondrous items don't get enhancements.
             return 0
         # Figure out our enhancement limits.
@@ -1089,7 +1186,7 @@ class Item:
             return "uncommon"
         elif bonus <= rare_max:
             return "rare"
-        elif bonux <= veryrare_max:
+        elif bonus <= veryrare_max:
             return "veryrare"
         else:
             return "legendary"
@@ -1647,8 +1744,10 @@ class Item:
             workstr = workstr.replace("@charges", str(self.getCharges()[0]))
             workstr = workstr.replace("@recharge", str(self.getCharges()[1]))
         if self.damage is not None:
-            workstr = workstr.replace("@dmg", str(self.getDamage()[0]))
+            # Damage type *must* come before damage. Otherwise, well. You get
+            # weird things.
             workstr = workstr.replace("@dmgtype", str(self.getDamageType()))
+            workstr = workstr.replace("@dmg", str(self.getDamage()[0]))
         if self.versatile_damage is not None:
             workstr = workstr.replace("@vdmg", str(self.getDamage()[1]))
         if self.ac is not None:
@@ -1734,10 +1833,19 @@ class Item:
         name = self.replaceVars(name)
         return name
     
+    def removeEffect(self, effect):
+        # Removes the offending effect.
+        if effect in self.prefixes:
+            self.prefixes.remove(effect)
+        elif effect in self.suffixes:
+            self.suffixes.remove(effect)
+        return
+    
     def replaceItem(self):
         # Replaces the current item with another item of the same category.
         # Checks materials, effects, and curses to make sure none will beomce
         # invalid in the process.
+        # Make sure we're not the only item on the list.
         group = []
         group_conflict = []
         subtype = []
@@ -1748,15 +1856,16 @@ class Item:
         property_conflict = []
         material_type = []
         for effect in self.prefixes + self.suffixes + [self.material]:
-            group += item_data.getList(effect.id, "group")
-            group_conflict += item_data.getList(effect.id, "group_conflict")
-            subtype += item_data.getList(effect.id, "subtype")
-            subtype_conflict += item_data.getList(effect.id, "item_subtype_conflict")
-            damage_type += item_data.getList(effect.id, "damage_type")
-            damage_type_conflict += item_data.getList(effect.id, "damage_type_conflict")
-            properties += item_data.getList(effect.id, "required_properties")
-            property_conflict += item_data.getList(effect.id, "property_conflict")
-            material_type += item_data.getList(effect.id, "material_type")
+            if effect.id is not None:
+                group += item_data.getList(effect.id, "group")
+                group_conflict += item_data.getList(effect.id, "group_conflict")
+                subtype += item_data.getList(effect.id, "subtype")
+                subtype_conflict += item_data.getList(effect.id, "item_subtype_conflict")
+                damage_type += item_data.getList(effect.id, "damage_type")
+                damage_type_conflict += item_data.getList(effect.id, "damage_type_conflict")
+                properties += item_data.getList(effect.id, "required_properties")
+                property_conflict += item_data.getList(effect.id, "property_conflict")
+                material_type += item_data.getList(effect.id, "material_type")
         if len(group) == 0:
             group = None
         if len(group_conflict) == 0:
@@ -1784,14 +1893,22 @@ class Item:
             property_conflict = None
         if len(material_type) == 0:
             material_type = None
-        newid= self.getID(group=group, subtype=subtype, damage_type=damage_type,
+        new_id= self.getID(group=group, subtype=subtype, damage_type=damage_type,
             properties=properties, material_type=material_type,
             group_conflict=group_conflict, subtype_conflict=subtype_conflict,
             damage_type_conflict=damage_type_conflict, 
             property_conflict=property_conflict)
-        self.id = newid
+        tries = 10 # There might be only one item that fits.
+        while new_id == self.id and tries > 0:
+            new_id= self.getID(group=group, subtype=subtype, damage_type=damage_type,
+                properties=properties, material_type=material_type,
+                group_conflict=group_conflict, subtype_conflict=subtype_conflict,
+                damage_type_conflict=damage_type_conflict, 
+                property_conflict=property_conflict)
+            tries -= 1
+        self.id = new_id
         self.getValues()
-        return newid
+        return new_id
         
     def getID(self, group=None, subtype=None, damage_type=None, max_bonus=None,
         properties=None, material_type=None, group_conflict=None,
