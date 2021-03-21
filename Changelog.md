@@ -34,6 +34,8 @@ Item Edit Update! Here's the general overview: The UI now supports editing items
 * If an armor requires strength, this is noted in the properties (Although not the requirement, that's elsewhere). This should make having effects that require this tag a little easier.
 * If an armor applies stealth disadvantage, this is also marked in the properties instead of the previous method of having a separate attribute. As with strength, this should make effects simpler.
 * Effects, items, materials, etc can have the is_magic tag set. For items and materials, it defaults to FALSE, and for effects it defaults to TRUE. This means you can have fancy non-magic items, too!
+* Scrolls now always generate the suffix first, as that's where the spells are.
+* Scrolls have had their weight increased. They have about a 12% chance of generating now, up from 7%
 ### Static Item Selector Changes
 * "Force Random Scroll" has been put into the static_items.cfg file as gen_scroll_spells
 * The static item selector not handles selecting spells for its spell scrolls.
@@ -41,6 +43,7 @@ Item Edit Update! Here's the general overview: The UI now supports editing items
 * Saving is now handled by the UI.
 * Names in the name generator can now have a maximum CR.
 * Spellbooks have their own weight. They've been configured to occur about 0.5% of the time.
+* CR 0-4 and 5-10 have had their chances for static items increased.
 ### UI Changes
 * The UI now supports saving like a sane person - That is, using a dialog.
 * The UI now supports editing of items! You can change, add, and remove prefixes and suffixes, edit the enhancement, re-roll the base item, and replace the random choices for all of the above. These edits are temporary and aren't saved to the Hoard until you hit that fancy save button. Once saved, you cannot revert the changes (Although you can still re-generate the hoard with the seed).

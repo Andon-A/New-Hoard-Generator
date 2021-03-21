@@ -636,7 +636,7 @@ class Modifier:
                 if itemid in data:
                     continue
             if rarity is not None:
-                data = item_data.getList(mod, "req_rarity")
+                data = item_data.getList(mod, "required_rarity")
                 if rarity not in data and len(data) > 0:
                     # Rarity not allowed.
                     continue
@@ -1270,7 +1270,10 @@ class Item:
                     last_effect = None
                 else:
                     prefix = self.getAffix("prefix")
-                    if prefix.id is None:
+                    if len(self.suffixes) == 0 and self.category == "scroll":
+                        # Scrolls have spells as suffixes. Add a suffix first.
+                        pass
+                    elif prefix.id is None:
                         # One None, future Nones. Prevent that.
                         pre_weight = 0
                         last_effect = None
@@ -2045,7 +2048,7 @@ class Item:
                     if data > budget:
                         continue
             if rarity is not None:
-                data = item_data.getList(item, "req_rarity")
+                data = item_data.getList(item, "required_rarity")
                 if rarity not in data and len(data) > 0:
                     # Our rarity doesn't match.
                     continue

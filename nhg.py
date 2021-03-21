@@ -74,10 +74,14 @@ class Window (tk.Tk):
         self.font_family = general.get("UI", "font_family")
         if self.font_family not in list(tkFont.families()):
             self.font_family = "Arial"
-        self.title_font = tkFont.Font(family=self.font_family, size=general.getInt("UI", "title_font_size"), weight="bold")
-        self.large_font = tkFont.Font(family=self.font_family, size=general.getInt("UI", "heading_font_size"))
-        self.standard_font = tkFont.Font(family=self.font_family, size=general.getInt("UI", "standard_font_size"))
-        self.small_font = tkFont.Font(family=self.font_family, size=general.getInt("UI", "small_font_size"))
+        self.title_font = tkFont.Font(family=self.font_family,
+            size=general.getInt("UI", "title_font_size"), weight="bold")
+        self.large_font = tkFont.Font(family=self.font_family,
+            size=general.getInt("UI", "heading_font_size"))
+        self.standard_font = tkFont.Font(family=self.font_family,
+            size=general.getInt("UI", "standard_font_size"))
+        self.small_font = tkFont.Font(family=self.font_family,
+            size=general.getInt("UI", "small_font_size"))
     
     def generateHoard(self, name, seed, cr):
         # Push button, get shiny things.
@@ -141,9 +145,12 @@ class Window (tk.Tk):
         window.resizable(False, False)
         # Set up our text and buttons.
         exit_text = tk.Label(window, text="Do you really want to quit?", font=self.standard_font)
-        save_text = tk.Label(window, text="Your current hoard has not been saved!", font= self.standard_font)
-        yes_button = tk.Button(window, text="Yes", relief=tk.RAISED, font=self.large_font, command=self.destroy)
-        no_button = tk.Button(window, text="No", relief=tk.RAISED, font=self.large_font, command=window.destroy)
+        save_text = tk.Label(window, text="Your current hoard has not been saved!",
+            font= self.standard_font)
+        yes_button = tk.Button(window, text="Yes", relief=tk.RAISED, font=self.large_font, 
+            command=self.destroy)
+        no_button = tk.Button(window, text="No", relief=tk.RAISED, font=self.large_font,
+            command=window.destroy)
         # Grid time.
         window.grid_columnconfigure(0, minsize=50)
         window.grid_columnconfigure(1, minsize=50)
@@ -404,7 +411,8 @@ class editPane(tk.Frame):
         menu.delete(0, tk.END)
         # And add in things from our list.
         for item in dropdown:
-            menu.add_command(label=item.getName(), command = lambda value=item: self.inspectItem(value))
+            menu.add_command(label=item.getName(), 
+                command = lambda value=item: self.inspectItem(value))
         self.var.set("Select an item to view")
         
     def inspectItem(self, item):
@@ -451,10 +459,11 @@ class editPane(tk.Frame):
         menu = rarity_dropdown["menu"]
         menu.delete(0, tk.END)
         for rarity in rarities:
-            menu.add_command(label=rarity, command = lambda value=rarity : self.setRarity(item, value))
+            menu.add_command(label=rarity,
+                command = lambda value=rarity : self.setRarity(item, value))
         rarity_var.set(clean_rarity)
-        max_bonus_label = ttk.Label(bonus_frame, text="Max Bonus: %d" % item.getMaxBonus(item.rarity),
-            font=self.master.standard_font)
+        max_bonus_label = ttk.Label(bonus_frame, 
+            text="Max Bonus: %d" % item.getMaxBonus(item.rarity), font=self.master.standard_font)
         current_bonus_label = ttk.Label(bonus_frame, text="Current Bonus: %d" % item.getBonus(),
             font=self.master.standard_font)
         avail_bonus_label = ttk.Label(bonus_frame, text="Available: %d" % item.getBudget(),
@@ -478,7 +487,8 @@ class editPane(tk.Frame):
         material_cost_label = ttk.Label(self.edit_frame, text="Bonus: %d" % item.material.bonus,
             font = self.master.small_font)
         material_reroll_button = tk.Button(self.edit_frame, text="Randomize", relief=tk.RAISED, 
-            font=self.master.small_font, command = lambda : self.rerollRandomEffect(item, item.material))
+            font=self.master.small_font, 
+            command = lambda : self.rerollRandomEffect(item, item.material))
         material_replace_button = tk.Button(self.edit_frame, text="Replace", relief=tk.RAISED,
             font=self.master.small_font, command = lambda : self.replaceEffect(item, item.material))
         material_remove_button = tk.Button(self.edit_frame, text="Remove", relief=tk.RAISED,
@@ -514,15 +524,21 @@ class editPane(tk.Frame):
         for effect in item.prefixes + item.suffixes:
             # Get the effect info
             if effect in item.prefixes:
-                effect_label = ttk.Label(self.edit_frame, text="Prefix: %s" % effect.prefix, font=self.master.small_font)
+                effect_label = ttk.Label(self.edit_frame, text="Prefix: %s" % effect.prefix,
+                    font=self.master.small_font)
             elif effect in item.suffixes:
-                effect_label = ttk.Label(self.edit_frame, text="Suffix: %s" % effect.suffix, font=self.master.small_font)
-            effect_cost_label = ttk.Label(self.edit_frame, text="Bonus: %d" % effect.bonus, font=self.master.small_font)
-            effect_reroll_button = tk.Button(self.edit_frame, text="Randomize", relief=tk.RAISED, font=self.master.small_font,
+                effect_label = ttk.Label(self.edit_frame, text="Suffix: %s" % effect.suffix,
+                    font=self.master.small_font)
+            effect_cost_label = ttk.Label(self.edit_frame, text="Bonus: %d" % effect.bonus,
+                font=self.master.small_font)
+            effect_reroll_button = tk.Button(self.edit_frame, text="Randomize", relief=tk.RAISED,
+                font=self.master.small_font,
                 command = lambda value=effect : self.rerollRandomEffect(item, value))
-            effect_replace_button = tk.Button(self.edit_frame, text="Replace", relief=tk.RAISED, font=self.master.small_font,
+            effect_replace_button = tk.Button(self.edit_frame, text="Replace", relief=tk.RAISED,
+                font=self.master.small_font,
                 command = lambda value=effect : self.replaceEffect(item, value))
-            effect_remove_button = tk.Button(self.edit_frame, text="Remove", relief=tk.RAISED, font=self.master.small_font,
+            effect_remove_button = tk.Button(self.edit_frame, text="Remove", relief=tk.RAISED,
+                font=self.master.small_font,
                 command = lambda value=effect : self.removeEffect(item, value))
             # Do we have to turn any of them off?
             if len(effect.spells) == 0 and len(effect.random_lists) == 0:
