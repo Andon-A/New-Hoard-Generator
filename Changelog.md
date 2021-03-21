@@ -1,6 +1,6 @@
 ## 2021.3.11
 * Initial release. Things exist now!
-## 2021.3.x
+## 2021.3.21
 Item Edit Update! Here's the general overview: The UI now supports editing items. This involved a complete re-write of the item generation code to allow for things to be swapped when and wherever, and a complete re-write of the UI to better support this. There's a few other ancillary things that have changed too.
 ### General Changes
 * Configuration files have changed. Most options have been replaced with easier to read versions that also more closely identify what they do. IE itemtypes became item_types.
