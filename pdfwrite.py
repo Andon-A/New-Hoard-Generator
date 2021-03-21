@@ -11,28 +11,27 @@
 # Since we know what font size and such we're using, we'll be able to configure
 # how things work.
 
+import configs
+
 import configparser
 from fpdf import FPDF, HTMLMixin
 from math import ceil, floor
 
-# First, like the others, load our config.
-cfg = configparser.ConfigParser()
-cfg.read("./config/general.cfg", encoding="cp1252")
-# Get our font folder
-fonts = cfg["Folders"]["pdffonts"]
-fontname = cfg["Fonts"]["name"]
-regfont = "./%s/%s" % (fonts, cfg["Fonts"]["regular"])
-bfont = "./%s/%s" % (fonts, cfg["Fonts"]["bold"])
-ifont = "./%s/%s" % (fonts, cfg["Fonts"]["italic"])
-bifont = "./%s/%s" % (fonts, cfg["Fonts"]["bolditalic"])
-# Minimum lines for an item. Hard coded to at least 3, for sanity's sake.
-minlines = cfg["PDF"].getint("minlines")
-if minlines is None:
-    minlines = 3
-elif minlines < 3:
-    minlines = 3
-
-NHGVER = 0.0
+# Load our (updated and shiny and new) configs:
+general = configs.CFG(configs.GENERAL)
+# Set up our fonts.
+FONT_FOLDER = general.get("Folders", "pdffonts")
+FONT_NAME = general.get("Fonts", "name")
+reg_font = "./%s/%s" % (FONT_FOLDER, general.get("Fonts", "regular"))
+bold_font = "./%s/%s" % (FONT_FOLDER, general.get("Fonts", "bold"))
+italic_font = "./%s/%s" % (FONT_FOLDER, general.get("Fonts", "italic"))
+bolditalic_font = "./%s/%s" % (FONT_FOLDER, general.get("Fonts", "bolditalic"))
+# Minimum lines for an item. At least 3 (Name, info, description).
+MIN_LINES = general.getInt("PDF", "min_lines")
+if MIN_LINES is None:
+    MIN_LINES = 3
+elif MIN_LINES < 3:
+    MIN_LINES = 3
 
 class PDF(FPDF, HTMLMixin):
     # A class that does a few other things
@@ -50,24 +49,24 @@ class PDF(FPDF, HTMLMixin):
         # Now add our font(s)
         # I have Liberation Serif in the config but that can be changed
         # First, the regular. Then bold, italic, and bolditalic.
-        self.add_font(family=fontname, style="", fname=regfont, uni=True)
-        self.add_font(family=fontname, style="B", fname=bfont, uni=True)
-        self.add_font(family=fontname, style="I", fname=ifont, uni=True)
-        self.add_font(family=fontname, style="BI", fname=bifont, uni=True)
+        self.add_font(family=FONT_NAME, style="", fname=reg_font, uni=True)
+        self.add_font(family=FONT_NAME, style="B", fname=bold_font, uni=True)
+        self.add_font(family=FONT_NAME, style="I", fname=italic_font, uni=True)
+        self.add_font(family=FONT_NAME, style="BI", fname=bolditalic_font, uni=True)
         # Now some other housekeeping. The title of the work (As saved)
         # And the creator (This program)
         self.title = title
         self.set_title(self.title)
-        self.set_creator("New Hoard Generator v%s" % NHGVER)
+        self.set_creator("New Hoard Generator v%s" % configs.VERSION)
         if type(cr) is int or type(cr) is str:
             cr = str(cr)
-            self.subtitle = "CR %s Hoard. Made with New Hoard Generator v%s" % (cr, NHGVER)
+            self.subtitle = "CR %s Hoard. Made with New Hoard Generator v%s" % (cr, configs.VERSION)
         else:
-            self.subtitle = "Made with New Hoard Generator v%s" % NHGVER
+            self.subtitle = "Made with New Hoard Generator v%s" % configs.VERSION
         self.seed = seed
         self.get_title_sizes() # Adjusts title font size to fit.
-        self.textsize = cfg["PDF"].getfloat("textsize")
-        self.indent = cfg["PDF"].getfloat("indent")
+        self.textsize = general.getFloat("PDF", "text_size")
+        self.indent = general.getFloat("PDF", "indent")
         # Store our margins since we'll be.... abusing them later.
         self.l_margin_actual = self.l_margin
         self.r_margin_actual = self.r_margin
@@ -99,11 +98,11 @@ class PDF(FPDF, HTMLMixin):
         
     def get_title_sizes(self):
         # Takes our title and subtitle sizes and reduces them to fit one line.
-        t1size = cfg["PDF"].getfloat("titlesize")
-        t2size = cfg["PDF"].getfloat("subtitlesize")
-        step = cfg["PDF"].getfloat("sizestep")
+        t1size = general.getFloat("PDF", "title_size")
+        t2size = general.getFloat("PDF", "subtitle_size")
+        step = general.getFloat("PDF", "size_step")
         # First, the title.
-        self.set_font(fontname, "B", t1size)
+        self.set_font(FONT_NAME, "B", t1size)
         xwidth = self.get_string_width(self.title)
         maxwidth = 8.5 - (self.l_margin + self.r_margin)
         while xwidth > maxwidth:
@@ -112,7 +111,7 @@ class PDF(FPDF, HTMLMixin):
             xwidth = self.get_string_width(self.title)
         self.titlesize = t1size # Set to our adjusted size.
         # And now for the subtitle.
-        self.set_font(fontname, "", t2size)
+        self.set_font(FONT_NAME, "", t2size)
         xwidth = self.get_string_width(self.subtitle)
         while xwidth > maxwidth:
             t2size -= step
@@ -124,7 +123,7 @@ class PDF(FPDF, HTMLMixin):
     def header(self):
         # This writes the title onto each page.
         # If it's the first page, also writes the "made by" line and seed.
-        self.set_font(fontname, "B", self.titlesize)
+        self.set_font(FONT_NAME, "B", self.titlesize)
         self.lh = self.get_line_height()
         # Make a cell with the title.
         # Get our width, depending on the margins.
@@ -133,11 +132,11 @@ class PDF(FPDF, HTMLMixin):
         if self.page < 2:
             # Only put the subtitle and seed on the first page.
             # Subtitle
-            self.set_font(fontname, "", self.subtitlesize)
+            self.set_font(FONT_NAME, "", self.subtitlesize)
             self.lh = self.get_line_height()
             self.cell(w=cw, h=self.lh, txt=self.subtitle, align="C", ln=2)
             # And seed.
-            self.set_font(fontname, "", self.textsize)
+            self.set_font(FONT_NAME, "", self.textsize)
             self.lh = self.get_line_height()
             if self.seed != "":
                 self.cell(w=cw, h=self.lh, txt="Seed: %s" % self.seed, align="C", ln=2)
@@ -196,7 +195,7 @@ class PDF(FPDF, HTMLMixin):
         
     def addItem(self, iname=None, iinfo=None, idesc=None, indent=True):
         # First, set our font and  line height.
-        self.set_font(fontname, "B", self.textsize)
+        self.set_font(FONT_NAME, "B", self.textsize)
         self.lh = self.get_line_height()
         # Clean up our description. If there's any new lines, separate them.
         if idesc is not None:
@@ -224,7 +223,7 @@ class PDF(FPDF, HTMLMixin):
             return
         # Get the lines remaining. First get our height.
         # And then divide it by our line size.
-        if self.getLinesRemaining() < minlines:
+        if self.getLinesRemaining() < MIN_LINES:
             # Not enough lines left.
             self.next_column()
             self.lh = self.get_line_height()
@@ -235,7 +234,7 @@ class PDF(FPDF, HTMLMixin):
             self.ln(self.lh) # And go to a new line.
         # Info is italic, so set the font. Leave the line height.
         if iinfo is not None:
-            self.set_font(fontname, "I", self.textsize)
+            self.set_font(FONT_NAME, "I", self.textsize)
             self.write(self.lh, iinfo)
             self.ln(self.lh)
         # And back to our normal text. But here we use the writeLines function.
@@ -286,7 +285,7 @@ class PDF(FPDF, HTMLMixin):
         # We presume the location is good. Except maybe indent.
         self.set_x(self.get_x() + indent)
         # Set our font and line height.
-        self.set_font(fontname, "", self.textsize)
+        self.set_font(FONT_NAME, "", self.textsize)
         self.lh = self.get_line_height()
         # We want to know if the text is *italic*
         italics = False
@@ -317,7 +316,7 @@ class PDF(FPDF, HTMLMixin):
                     # And we're at the bottom of the column.
                     self.next_column()
                     # If we go to a new page, well. This helps keep things tidy
-                    self.set_font(fontname, "", self.textsize)
+                    self.set_font(FONT_NAME, "", self.textsize)
                     self.lh = self.get_line_height()
                 else:
                     # Still room. Another line!
@@ -331,9 +330,9 @@ class PDF(FPDF, HTMLMixin):
                 startitalic = False # We're already italic.
             # Turn on our italics.
             if italics:
-                self.set_font(fontname, "I", self.textsize)
+                self.set_font(FONT_NAME, "I", self.textsize)
             else:
-                self.set_font(fontname, "", self.textsize)
+                self.set_font(FONT_NAME, "", self.textsize)
             # Write our word
             if r == len(text)-1:
                 # Last word, skip the trailing space.

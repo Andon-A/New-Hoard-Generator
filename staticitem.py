@@ -2,96 +2,85 @@
 # This chooses magic items from a list. It pulls their description, their
 # rarity, and the like.
 
-import configparser
 import random
 import logging
-import os
+import configs
+import spells
 
-# Load our items.
-logging.info("Importing static items")
-# Get the folder configuration configuration first.
-cfg = configparser.ConfigParser()
-cfg.read("./config/general.cfg", encoding="cp1252")
-staticdir = cfg["Folders"]["staticfolder"]
-# Now our own. Reset it, don't want any conflicting data.
-cfg = configparser.ConfigParser()
-cfg.read("./config/staticconfig.cfg", encoding="cp1252")
-# Now the information from static items.
-data = configparser.ConfigParser()
-dlist = os.listdir("./%s" % staticdir)
-for d in dlist:
-    if d[-4:] == ".cfg":
-        data.read("./%s/%s" % (staticdir, d), encoding="cp1252")
-        logging.info("Item file ./%s/%s loaded." % (staticdir, d))
-print("Static item files loaded.")
-
-def getCategoryList(category, rarity=None):
-    # Grabs a list of items of the specific category.
-    ilist = []
-    for i in data:
-        # Make sure our item has the option before trying to grab it.
-        if data.has_option(i, "category"):
-            if data[i]["category"] == category:
-                # It does. Check if its rarity matches ours.
-                if rarity is None:
-                    # No rarity filter.
-                    ilist.append(i)
-                elif data.has_option(i, "rarity"):
-                    # We have a rarity, good.
-                    if data[i]["rarity"] == rarity:
-                        # And it matches.
-                        ilist.append(i)
-    return ilist
+general = configs.CFG(configs.GENERAL)
+item_data = configs.CFG(configs.STATIC_DATA)
+cfg = configs.CFG(configs.STATIC_GEN_CFG)
     
 class Item:
     def __init__(self, rarity=None, category=None):
         self.id = self.getItem(rarity, category)
         self.name = None
+        self.name_set = False
         self.category = None
         self.rarity = None
         self.description = None
         self.info = None
-        self.getInfo()
+        self.getItemInfo()
         logging.info("Static item %s selected" % self.name)
         self.source = "Premade Item"
-        
+    
+    # For compatibility with the random item generator, getInfo, getName, and
+    # getDescription should be functions
     def getInfo(self):
+        return self.info
+    
+    def getName(self):
+        name = self.name
+        if cfg.getBool("General", "gen_scroll_spells") and self.category == "scroll" and not self.name_set:
+            # Scrolls are all "Spell scroll (X Level)" so that's easy to replace.
+            p1 = name.find("(")
+            if p1 != -1:
+                level = name[p1+1]
+                if level.lower() == "c":
+                    level = 0
+                else:
+                    level = int(level)
+                spell = spells.Spell(level=level)
+                name = self.name[:p1] + "(%s)" % spell.name      
+                self.name = name # Lock our spell scroll in.
+                self.name_set = True
+        return name
+    
+    def getDescription(self):
+        return self.description
+        
+    
+    def getItemInfo(self):
         # Assigns the name, category, rarity, and description of the item's ID.
-        if data.has_option(self.id, "name"):
-            self.name = data[self.id]["name"]
-        if data.has_option(self.id, "category"):
-            self.category = data[self.id]["category"]
-        if data.has_option(self.id, "rarity"):
-            self.rarity = data[self.id]["rarity"]
-        if data.has_option(self.id, "description"):
-            self.description = data[self.id]["description"].replace("\\n","\n")
-        # Information, such as "Armor (medium)" or whatever.
-        if data.has_option(self.id, "info"):
-            self.info = data[self.id]["info"]
+        self.name = item_data.get(self.id, "name")
+        self.category = item_data.get(self.id, "category")
+        self.rarity = item_data.get(self.id, "rarity")
+        self.description = item_data.get(self.id, "description").replace("\\n","\n")
+        self.info = item_data.get(self.id, "info")
             
     def getCategory(self, rarity):
         # Determines the item's category on the weighted list.
         clist = []
         wlist = []
-        for c in cfg[rarity]:
+        for category in cfg.config[rarity]:
             # Each item in the rarities represents a weight.
-            w = cfg[rarity].getint(c)
-            if w > 0:
-                # Make sure we have items to choose from in this combo.
-                if len(getCategoryList(c, rarity)) > 0:
-                    clist.append(c)
-                    wlist.append(w)
+            weight = cfg.getInt(rarity, category)
+            if weight > 0:
+                # Make sure we have items to choose from in this category.
+                cat_list = item_data.getOptionList("category", category)
+                for item in cat_list:
+                    if item_data.get(item, "rarity") == rarity:
+                        clist.append(category)
+                        wlist.append(weight)
+                        break # We only need to make sure there's one item.
         return random.choices(clist, wlist)[0]
     
     def getRarity(self):
         # Pulls the rarity weights from the config file.
         rlist = ["common","uncommon","rare","veryrare","legendary"]
         wlist = []
-        wlist.append(cfg["Rarity"].getint("commonweight"))
-        wlist.append(cfg["Rarity"].getint("uncommonweight"))
-        wlist.append(cfg["Rarity"].getint("rareweight"))
-        wlist.append(cfg["Rarity"].getint("veryrareweight"))
-        wlist.append(cfg["Rarity"].getint("legendaryweight"))
+        for rarity in rlist:
+            wlist.append(cfg.getInt("Rarity", "%s_weight" % rarity))
         return random.choices(rlist,wlist)[0]
     
     def getItem(self, rarity, category):
@@ -105,7 +94,11 @@ class Item:
         else:
             category = category.lower()
         # OK, now get our items.
-        ilist = getCategoryList(category, rarity)
+        filtered_list = []
+        item_list = item_data.getOptionList("category", category)
+        for item in item_list:
+            if item_data.get(item, "rarity") == rarity:
+                filtered_list.append(item)
         # And, simply, choose one. No need for filters here.
-        return random.choice(ilist)
+        return random.choice(filtered_list)
     

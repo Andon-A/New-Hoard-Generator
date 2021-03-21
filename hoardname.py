@@ -2,25 +2,13 @@
 # How fancy.
 
 import random
-import configparser
+#import configparser
 import logging
-import os
+#import os
+import configs
 
-cfg = configparser.ConfigParser()
-cfg.read("./config/general.cfg", encoding="cp1252")
-# print("Item Generator config loaded")
-logging.info("Hoard Name Generator config loaded.")
-# Load our item files
-dfolder = cfg["Folders"]["hoardfolder"]
-data = configparser.ConfigParser()
-ilist = os.listdir("./%s" % dfolder)
-for i in ilist:
-    if i[-4:] == ".cfg":
-        # A config file. Load it.
-        data.read("./%s/%s" % (dfolder, i))
-        # print("Item file %s loaded." % i)
-        logging.info("Name file ./%s/%s loaded." % (dfolder, i))
-print("Hoard Name Generator files loaded.") 
+general = configs.CFG(configs.GENERAL)
+name_data = configs.CFG(configs.HOARD_NAMES)
 
 class HoardName:
     def __init__(self, cr, name=None):
@@ -53,23 +41,34 @@ class HoardName:
         # Grabs a base name, prefix, or suffix for our hoard.
         if option not in ["prefix","suffix","name"]:
             return ""
-        ids = []
-        for id in data:
-            if data.has_option(id, option):
-                # Well, this thing has a name.
-                # See if it's of sufficient level.
-                minlvl = data[id].getint("mincr")
-                if minlvl is None:
-                    minlvl = 0
-                if self.cr >= minlvl and id not in chosen:
-                    ids.append(id)
-        return random.choice(ids)
+        id_list = []
+        for id in name_data.config:
+            if id in chosen:
+                # We can't choose the same thing again.
+                continue
+            data = name_data.get(id, option)
+            if data is None:
+                # Doesn't have our required option.
+                continue
+            min_lvl = name_data.getInt(id, "min_cr")
+            if min_lvl is not None:
+                if self.cr < min_lvl:
+                    # Our level is too low for this name.
+                    continue
+            max_lvl = name_data.getInt(id, "max_cr")
+            if max_lvl is not None:
+                if self.cr > max_lvl:
+                    # We're too high for this.
+                    continue
+            # We've made it past our filters.
+            id_list.append(id)
+        return random.choice(id_list)
     
     def getName(self):
         # Grabs the prefix, name, and suffix values of our, well. Those.
         name = []
-        name.append(data[self.prefix]["prefix"])
-        name.append(data[self.id]["name"])
-        name.append(data[self.suffix]["suffix"])
+        name.append(name_data.get(self.prefix, "prefix"))
+        name.append(name_data.get(self.id, "name"))
+        name.append(name_data.get(self.suffix, "suffix"))
         name = " ".join(name)
         return name
