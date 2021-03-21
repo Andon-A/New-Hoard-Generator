@@ -675,16 +675,19 @@ class editPane(tk.Frame):
         effect = item.getAffix("suffix")
         if effect.id is not None:
             item.suffixes.append(effect)
+        self.edited = True
         self.updateEdit(item)
     
     def addPrefix(self, item):
         effect = item.getAffix("prefix")
         if effect.id is not None:
             item.prefixes.append(effect)
+        self.edited = True
         self.updateEdit(item)
         
     def autofillItem(self, item):
         item.generateEffects()
+        self.edited = True
         self.updateEdit(item)
     
     def resetItem(self):
