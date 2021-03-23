@@ -22,7 +22,7 @@ for cfgfile in ["general", "item_generator", "hoard_generators", "static_items"]
     if not os.path.isfile("./config/%s.cfg" % cfgfile):
         logging.critical("Critical Error: Configuration file %s.cfg not found. The program cannot continue." % cfgfile)
         # ui.errorbox() # TODO: Implement the UI toolbox.
-        exit()
+        raise SystemExit("Critical Error: Configuration file %s.cfg not found. The program cannot continue." % cfgfile)
 
 # OK, they do. So load them.
 
