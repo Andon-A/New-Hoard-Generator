@@ -77,23 +77,23 @@ def readFiles(folder):
 
 # Now load our information.
 # Start with item generator
-folder = GENERAL["Folders"]["itemfolder"]
+folder = GENERAL["Folders"]["item_folder"]
 ITEM_DATA = readFiles(folder)
 logging.debug("Loaded Item Generator information files.")
 # And hoard names.
-folder = GENERAL["Folders"]["hoardnamefolder"]
+folder = GENERAL["Folders"]["hoard_name_folder"]
 HOARD_NAMES = readFiles(folder)
 logging.debug("Loaded Hoard Name Generator information files.")
 # Treasures
-folder = GENERAL["Folders"]["treasurefolder"]
+folder = GENERAL["Folders"]["treasure_folder"]
 TREASURE_DATA = readFiles(folder)
 logging.debug("Loaded Treasure informationiles")
 # Static Items
-folder = GENERAL["Folders"]["staticfolder"]
+folder = GENERAL["Folders"]["static_folder"]
 STATIC_DATA = readFiles(folder)
 logging.debug("Loaded Static Item information files")
 # Spell Data
-folder = GENERAL["Folders"]["spellfolder"]
+folder = GENERAL["Folders"]["spell_folder"]
 SPELL_DATA = readFiles(folder)
 logging.debug("Loaded Spell data files")
 

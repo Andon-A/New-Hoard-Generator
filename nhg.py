@@ -44,7 +44,7 @@ import pdfwrite
 # Setup some constants and other variables.
 # default save path. As with the logs, this should be easily modified for use
 # with a system-dependent folder method
-DEFAULT_SAVE_PATH = os.path.abspath("./%s" % general.get("Folders", "savefolder"))
+DEFAULT_SAVE_PATH = os.path.abspath("./%s" % general.get("Folders", "save_folder"))
 # Make sure this path exists
 if not os.path.isdir(DEFAULT_SAVE_PATH):
     os.mkdir(DEFAULT_SAVE_PATH)
@@ -493,6 +493,17 @@ class editPane(tk.Frame):
             font=self.master.small_font, command = lambda : self.replaceEffect(item, item.material))
         material_remove_button = tk.Button(self.edit_frame, text="Remove", relief=tk.RAISED,
             font=self.master.small_font, command = lambda : self.removeEffect(item, item.material))
+        curse_label = ttk.Label(self.edit_frame, text="Curse: %s" % item.curse.id,
+            font = self.master.small_font)
+        curse_cost_label = ttk.Label(self.edit_frame, text="Bonus: %d" % item.curse.bonus,
+            font = self.master.small_font)
+        curse_reroll_button = tk.Button(self.edit_frame, text="Randomize", relief=tk.RAISED,
+            font=self.master.small_font,
+            command = lambda : self.rerollRAndomEffect(item, item.curse))
+        curse_replace_button = tk.Button(self.edit_frame, text="Replace", relief=tk.RAISED,
+            font=self.master.small_font, command = lambda : self.replaceEffect(item, item.curse))
+        curse_remove_button = tk.Button(self.edit_frame, text="Remove", relief=tk.RAISED,
+            font=self.master.small_font, command = lambda : self.removeEffect(item, item.curse))
         # See if we need to have buttons available.
         if len(item.spells) == 0 and len(item.random_lists) == 0:
             # No random things to randomize.
@@ -507,6 +518,12 @@ class editPane(tk.Frame):
             material_remove_button.configure(state="disabled")
         elif item.material.id is None:
             material_remove_button.configure(state="disabled")
+        if item.curse is None:
+            curse_remove_button.configure(state="disabled")
+        elif item.curse.id is None:
+            curse_remove_button.configure(state="disabled")
+        if len(item.curse.spells) == 0 and len(item.curse.random_lists) == 0:
+            curse_reroll_button.configure(state="disabled")
         # Put them in the box.
         bonus_frame.grid(row=0, column=0, columnspan=5, sticky="EW", pady=4)
         item_label.grid(row=2, column=0, columnspan=5, sticky="W")
@@ -518,9 +535,14 @@ class editPane(tk.Frame):
         material_reroll_button.grid(row=3, column=2)
         material_replace_button.grid(row=3, column=3)
         material_remove_button.grid(row=3, column=4, padx=(0, 10))
+        curse_label.grid(row=4, column=0, columnspan=5, sticky="W")
+        curse_cost_label.grid(row=4, column=0, sticky="E")
+        curse_reroll_button.grid(row=4, column=2)
+        curse_replace_button.grid(row=4, column=3)
+        curse_remove_button.grid(row=4, column=4, padx=(0, 10))
         # Now. For the effects.
         # We'll need to know what row we're on.
-        row = 4
+        row = 5
         for effect in item.prefixes + item.suffixes:
             # Get the effect info
             if effect in item.prefixes:
@@ -709,11 +731,7 @@ class editPane(tk.Frame):
     
     def replaceEffect(self, item, effect):
         # Replaces the effect on the item with another one.
-        if effect.category == "material":
-            # We're replacing the material
-            item.replaceAffix(effect)
-        elif effect.category == "effect":
-            item.replaceAffix(effect)
+        item.replaceAffix(effect)
         self.edited = True
         self.updateEdit(item)
     
@@ -722,6 +740,9 @@ class editPane(tk.Frame):
         if effect.category == "material":
             # We always have to have a material, so generate an empty one.
             item.material = item.getEmptyMaterial()
+        elif effect.category == "curse":
+            # As with materials, generate an empty curse.
+            item.curse = item.getEmptyCurse()
         elif effect.category == "effect":
             # These we don't have to replace.
             item.removeEffect(effect)

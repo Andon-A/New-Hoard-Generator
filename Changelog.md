@@ -1,6 +1,6 @@
-## 2021.3.11
+## 2021.3.11: Initial Release
 * Initial release. Things exist now!
-## 2021.3.21
+## 2021.3.21: Item Editing
 Item Edit Update! Here's the general overview: The UI now supports editing items. This involved a complete re-write of the item generation code to allow for things to be swapped when and wherever, and a complete re-write of the UI to better support this. There's a few other ancillary things that have changed too.
 ### General Changes
 * Configuration files have changed. Most options have been replaced with easier to read versions that also more closely identify what they do. IE itemtypes became item_types.
@@ -51,3 +51,18 @@ Item Edit Update! Here's the general overview: The UI now supports editing items
 * Font family and font sizes can now be edited via the config files, in the UI section.
 * If the set font family isn't found (It's now Liberation Serif by default), it'll default to Arial.
 * The Hoard Name, Seed, and CR are now "Read-Only" instead of "Disabled" so you can highlight and copy them even when you can't edit them.
+## 2021.X.X: Curses!
+This cursed update adds, well, curses. Curses are another type of effect and generate on an item in a similar manner to materials - Items can only have one, etc. See below for details!
+* Curses added! Items can only have one curse, and it largely follows the conventions for other effects. They're now listed in the UI as well.
+* Curses do not have names, prefixes, or suffixes. An item's name only adds "Cursed" to the beginning.
+* Curses can be edited like other effects.
+* Added the generate_curses option (True/False) to item_generator.cfg. This does what you might expect it to do - Enables or disables curses.
+* Added the hidden_from_identify (True/False) option, only for curses. If this is TRUE (Default), it adds the hidden_from_identify_single_description or hidden_from_identify_plural_description to the curse's description.
+* Added the destroy_on_removal (True/False) option. If this is TRUE (Default false), it adds the destroy_on_removal_single_description or destroy_on_removal_plural_description, depending on base item or quantity.
+* Added (rarity)_curse_chance option to item_generator.cfg. This is the chance (0-100) that an item of the given rarity will generate with a curse.
+* Updated effect description to allow single_item_description and plural_item_description.
+* If the single_item_description or plural_item_description is empty, it will follow current patterns, checking to see if there's a (category)_description, and then replacing any @(other category)_description if needed.
+* The single_item_Description and plural_item_description entries do not support the @(other category)_description replacements.
+* Added requires_attunement to effects. If the item does not already have an attunement requirement, these effects will not generate.
+* Changed some more configurations to be more readable.
+* Removed requireaffix option for items. It wasn't being used in code, and only one effect (On scrolls) was attempting to use it. With tweaks to scroll code, this shouldn't be needed, and can be accomplished in other ways if it is.
