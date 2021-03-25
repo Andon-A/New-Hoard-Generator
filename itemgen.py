@@ -2199,6 +2199,3 @@ class Item:
             return None
         else:
             return random.choices(filter_list, weight_list)[0]
-
-#class Curse:
-    # Curses! Foiled again!
