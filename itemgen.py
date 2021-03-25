@@ -393,6 +393,7 @@ class Modifier:
         return workstr
     
     def getDescription(self, category, force_plural=None):
+    # TODO: Invert this. Should check for specific description first, then single/plural if not found
         # returns the description of the item.
         if self.id is None:
             # Nothing to return
@@ -732,7 +733,6 @@ class Item:
         self.source = "Generated Item"
         self.rarity = None
         self.category = None
-        self.item_name = ""
         self.id = None
         self.charges = 0
         self.recharge = None
@@ -806,8 +806,7 @@ class Item:
         if self.category in ENH_ITEMS:
             self.can_have_enh = True
         # Name and Description. Always last, since sometimes they depend on things.
-        self.item_name = self.getString("name")
-        self.item_description = self.getString("Description")
+        self.item_description = self.getItemDescription()
     
     def getMaxEffects(self):
         return cfg.getInt("General", "max_effects_%s" % self.rarity)
@@ -857,7 +856,6 @@ class Item:
         self.spells = {}
         self.getItemModifiers() # This re-does the spells.
         self.choices = self.chooseRandom()
-        self.item_name = self.getString("name")
         self.item_description = self.getString("Description")
     
     def getItemModifiers(self):
@@ -997,6 +995,31 @@ class Item:
         workstr = item_data.get(self.id, strID)
         workstr = self.replaceItemVars(workstr)
         return workstr
+    
+    def getItemName(self):
+        if self.category in PLURAL_ITEMS and self.quantity != 1:
+            # We're plural. Try for a plural name.
+            name = item_data.get(self.id, "plural_name")
+        else:
+            name = item_data.get(self.id, "single_name")
+        if name is None or name == "":
+            # Those were either empty or do not exist. Try default name.
+            name = item_data.get(self.id, "name")
+        return name
+    
+    def getItemDescription(self):
+        # Returns a single or plural description, depending on if the item is plural, or
+        # if the item has a quantity of 1.
+        if self.category in PLURAL_ITEMS and self.quantity != 1:
+            desc = item_data.get(self.id, "plural_description")
+        else:
+            desc = item_data.get(self.id, "single_description")
+        if desc is None or desc == "":
+            desc = item_data.get(self.id, "description")
+        if desc is None:
+            return ""
+        else:
+            return desc
         
     def replaceItemVars(self, workstr):
         # Replaces the randomly generated spells and lists.
@@ -1838,7 +1861,7 @@ class Item:
         if self.isMagic():
             magic = "magical"
         if self.category in ("weapon", "armor", "ammunition"):
-            desc += "%s (%s %s), " % (self.category, magic, self.item_name.lower())
+            desc += "%s (%s %s), " % (self.category, magic, self.getItemName().lower())
         elif self.category in ("potion", "ring", "rod", "scroll", "staff", "wand"):
             desc += "%s %s, " % (magic, self.category)
         elif self.category == "shield":
@@ -1861,11 +1884,11 @@ class Item:
             return workstr
         workstr = workstr.replace("@enh", str(self.enhancement))
         if lowercase:
-            workstr = workstr.replace("@item", self.item_name.lower())
+            workstr = workstr.replace("@item", self.getItemName().lower())
             if self.material.id is not None:
                 workstr = workstr.replace("@material", self.material.name.lower())
         else:
-            workstr = workstr.replace("@item", self.item_name)
+            workstr = workstr.replace("@item", self.getItemName())
             if self.material.id is not None:
                 workstr = workstr.replace("@material", self.material.name)
         workstr = workstr.replace("@category", self.category)
@@ -1913,12 +1936,16 @@ class Item:
         if self.enhancement > 0:
             desc.append(cfg.get("Effects", "%s_enh_description" % self.category))
         desc.append(self.item_description)
+        plural = None
+        if self.quantity == 1:
+            # Force singular for items that have a quantity of 1.
+            plural = False
         if self.material is not None:
-            desc.append(self.material.getDescription(self.category))
+            desc.append(self.material.getDescription(self.category, plural))
         for affix in self.prefixes + self.suffixes:
-            desc.append(affix.getDescription(self.category))
+            desc.append(affix.getDescription(self.category, plural))
         if self.curse is not None:
-            desc.append(self.curse.getDescription(self.category))
+            desc.append(self.curse.getDescription(self.category, plural))
         desc = "\n".join(desc)
         desc = self.replaceVars(desc, lowercase=True)
         return desc
@@ -1949,13 +1976,13 @@ class Item:
         # Material and name.
         matname = ""
         if self.material is None:
-            matname = self.item_name
+            matname = self.getItemName()
         elif self.material.id is None:
-            matname = self.item_name
-        elif "@material" in self.item_name:
-            matname = self.item_name.replace("@material", self.material.name)
+            matname = self.getItemName()
+        elif "@material" in self.getItemName():
+            matname = self.getItemName().replace("@material", self.material.name)
         else:
-            matname = " ".join([self.material.name, self.item_name])
+            matname = " ".join([self.material.name, self.getItemName()])
         suflist = []
         for suffix in self.suffixes:
             suflist.append(suffix.suffix)
