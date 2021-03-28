@@ -68,3 +68,8 @@ This cursed update adds, well, curses. Curses are another type of effect and gen
 * Added requires_attunement to effects. If the item does not already have an attunement requirement, these effects will not generate.
 * Changed some more configurations to be more readable.
 * Removed requireaffix option for items. It wasn't being used in code, and only one effect (On scrolls) was attempting to use it. With tweaks to scroll code, this shouldn't be needed, and can be accomplished in other ways if it is.
+## 2021.X.X: System Folders
+This update is a simple one, as far as the outside goes. It changes the folders from local folders to a system folder.
+* If local_mode in general.cfg is set to TRUE, the program will attempt to run in local mode. Useful for, say, a thumb drive.
+* Added an option in general.cfg to set the logging level, as per the python3 logging module
+* local_mode and logging_level only work if they're in the local (./default_config) general.cfg file.

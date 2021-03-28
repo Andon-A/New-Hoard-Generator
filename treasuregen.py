@@ -87,7 +87,7 @@ class TreasurePile:
         while len(getTreasureList(category, minvalue, maxvalue)) == 0:
             category = random.choice(categories)
             tries += 1
-            if tries > general.getInt("Treasuregen", "maxtries"):
+            if tries > general.getInt("Treasuregen", "max_tries"):
                 # We've tried too many times.
                 return None
         return category

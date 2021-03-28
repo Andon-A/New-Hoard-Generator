@@ -21,11 +21,11 @@ from math import ceil, floor
 general = configs.CFG(configs.GENERAL)
 # Set up our fonts.
 FONT_FOLDER = general.get("Folders", "pdffonts")
-FONT_NAME = general.get("Fonts", "name")
-reg_font = "./%s/%s" % (FONT_FOLDER, general.get("Fonts", "regular"))
-bold_font = "./%s/%s" % (FONT_FOLDER, general.get("Fonts", "bold"))
-italic_font = "./%s/%s" % (FONT_FOLDER, general.get("Fonts", "italic"))
-bolditalic_font = "./%s/%s" % (FONT_FOLDER, general.get("Fonts", "bolditalic"))
+FONT_NAME = general.get("PDF", "font_name")
+reg_font = "./%s/%s" % (FONT_FOLDER, general.get("PDF", "font_regular"))
+bold_font = "./%s/%s" % (FONT_FOLDER, general.get("PDF", "font_bold"))
+italic_font = "./%s/%s" % (FONT_FOLDER, general.get("PDF", "font_italic"))
+bolditalic_font = "./%s/%s" % (FONT_FOLDER, general.get("PDF", "font_bolditalic"))
 # Minimum lines for an item. At least 3 (Name, info, description).
 MIN_LINES = general.getInt("PDF", "min_lines")
 if MIN_LINES is None:

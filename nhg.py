@@ -12,34 +12,12 @@ import copy
 import logging
 import os
 import time
-
-# Set up our logging.
-start_time = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime(time.time()))
-# Make sure our logging folder exists.
-LOG_DIR = "./logs" # Use this for help in the future, IE. System-dependent folders
-if not os.path.isdir(LOG_DIR):
-    os.mkdir(LOG_DIR)
-logging.basicConfig(filename="%s/output %s.log" % (LOG_DIR, start_time))
-# Import configs in the middle of this?
-# Well, we need info from it, but it can't start without logging started.
 import configs
-general = configs.CFG(configs.GENERAL)
-
-logging.info("Beginning log file\nNHG Version: %s\nStart time: %s" % (configs.VERSION, start_time))
-# Trim any excess logs.
-log_list = []
-for log in os.listdir(LOG_DIR):
-    if log.endswith(".log"):
-        log_list.append(log)
-if len(log_list) > general.getInt("General", "logs_to_keep"):
-    log_list.sort(reverse=True) # They're named by time, so oldest first.
-    while len(log_list) > general.getInt("General", "logs_to_keep"):
-        log = log_list.pop()
-        os.remove("%s/%s" % (LOG_DIR, log))
-        
-# Now we can import our hoard generator.
 import hoardgen
 import pdfwrite
+ 
+ 
+general = configs.CFG(configs.GENERAL)       
  
 # Setup some constants and other variables.
 # default save path. As with the logs, this should be easily modified for use
