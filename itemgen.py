@@ -392,42 +392,60 @@ class Modifier:
         workstr = self.replaceVars(workstr)
         return workstr
     
-    def getDescription(self, category, force_plural=None):
-    # TODO: Invert this. Should check for specific description first, then single/plural if not found
-        # returns the description of the item.
+    def getDescription(self, category, force_description=None, plural=None):
+        # Returns the description of the modifier for the item.
+        # If a specified description is found (Say, armor_description), it'll use that. Otherwise
+        # it reverts to single_description or plural_description.
+        # force_description can be a specific description, such as armor or plural. In that case,
+        # it returns the appropriate description regardless of what others are found.
+        # We can also tell the instructor if we want to be plural or singular. This only functions
+        # for returning single_description or plural_description, and is otherwise ignored.
+        # force_description can also be used to grab other descriptions that we won't auto use.
         if self.id is None:
-            # Nothing to return
+            # We don't exist.
             return ""
-        plural = "single" # Singular item by default.
-        if category in PLURAL_ITEMS:
-            plural = "plural"
-        # Allow us to force a plural or singular description.
-        # Useful for ammunition that ends up with a quantity of 1!
-        if force_plural == True:
-            plural = "plural"
-        elif force_plural == False:
-            plural = "single"
-        elif force_plural in ["single", "plural"]:
-            plural = force_plural
-        # Now, try to get the description.
         desc = ""
-        if plural is not None:
-            desc = item_data.get(self.id, "%s_item_description" % plural)
-        if desc is None or desc == "":
-            # No description.
-            desc = item_data.get(self.id, "%s_description" % category)
+        if type(force_description) is str:
+            desc = item_date.get(self.id, "%s_description" % force_description)
             if desc is None:
-                # We have... nothing. So return nothing.
                 return ""
-            for item_type in ITEM_TYPES:
-                if "@%s_description" % item_type in desc:
-                    newdesc = item_data.get(self.id, "%s_description" % item_type)
-                    if newdesc is not None:
-                        desc = desc.replace("@%s_description" % item_type, newdesc)
-        # Now for some curse stuff.
+            elif force_description not in ITEM_TYPES:
+                # We do further replacement on item_type descriptions, but otherwise return.
+                desc = self.replaceVars(desc)
+                return desc
+        else:
+            desc = item_data.get(self.id, "%s_description" % category)
+        if desc is None:
+            # Nothing found. Need something to work with.
+            desc = ""
+        for item_type in ITEM_TYPES:
+            # Replace any substitutions here.
+            if "@%s_description" % item_type in desc:
+                new_desc = item_data.get(self.id, "%s_description" % item_type)
+                if new_desc is not None and new_desc != "":
+                    desc = desc.replace("@%s_description" % item_type, new_desc)
+        # If we're not empty, return things.
+        if desc is not None and desc != "":
+            desc = self.replaceVars(desc)
+            return desc
+        # Are we plural?
+        if plural not in ["plural", "single"]:
+            if plural == True:
+                plural = "plural"
+            elif plural == False:
+                plural = "single"
+            elif category in PLURAL_ITEMS:
+                plural = "plural"
+            else:
+                plural = "single"
+        desc = item_data.get(self.id, "%s_description" % plural)
+        if desc is None:
+            # We're going to need something to work with anyway.
+            desc = ""
         if self.category == "curse":
+            # Special things for curses.
             if self.hidden_curse:
-                # We're hidden from identification.
+                # We are hidden from the identification spell.
                 desc += "\n%s" % cfg.get("Curses", "hidden_from_identify_%s_description" % plural)
                 if self.destroy_curse:
                     desc += " %s" % cfg.get("Curses", "destroy_on_removal_%s_description" % plural)
@@ -752,7 +770,6 @@ class Item:
         self.curse = None
         self.item_attunement = None
         self.item_bonus = 0
-        self.item_description = None
         self.item_properties = []
         self.attunement = None
         self.enhancement = 0
@@ -805,8 +822,6 @@ class Item:
             self.max_suffix = cfg.getInt("General", "max_suffix")
         if self.category in ENH_ITEMS:
             self.can_have_enh = True
-        # Name and Description. Always last, since sometimes they depend on things.
-        self.item_description = self.getItemDescription()
     
     def getMaxEffects(self):
         return cfg.getInt("General", "max_effects_%s" % self.rarity)
@@ -856,7 +871,6 @@ class Item:
         self.spells = {}
         self.getItemModifiers() # This re-does the spells.
         self.choices = self.chooseRandom()
-        self.item_description = self.getString("Description")
     
     def getItemModifiers(self):
         # Returns the pre-programmed effects, if they're available.
@@ -1007,10 +1021,10 @@ class Item:
             name = item_data.get(self.id, "name")
         return name
     
-    def getItemDescription(self):
+    def getItemDescription(self, plural=None):
         # Returns a single or plural description, depending on if the item is plural, or
         # if the item has a quantity of 1.
-        if self.category in PLURAL_ITEMS and self.quantity != 1:
+        if (self.category in PLURAL_ITEMS and self.quantity != 1) or plural == True:
             desc = item_data.get(self.id, "plural_description")
         else:
             desc = item_data.get(self.id, "single_description")
@@ -1080,7 +1094,8 @@ class Item:
         all_effects = []
         all_effects += self.prefixes + self.suffixes
         if self.material is not None:
-            all_effects.append(self.material)
+            if self.material.id is not None:
+                all_effects.append(self.material)
         all_properties = []
         all_properties += self.getProperties()
         if self.enhancement > 0:
@@ -1935,21 +1950,26 @@ class Item:
             desc.append(chargestr)
         if self.enhancement > 0:
             desc.append(cfg.get("Effects", "%s_enh_description" % self.category))
-        desc.append(self.item_description)
         plural = None
         if self.quantity == 1:
             # Force singular for items that have a quantity of 1.
             plural = False
+        desc.append(self.getItemDescription(plural))
         if self.material is not None:
-            desc.append(self.material.getDescription(self.category, plural))
+            if self.category != "ammunition":
+                desc.append(self.material.getDescription(self.category, plural=plural))
+            else:
+                if self.quantity == 1:
+                    desc.append(self.material.getDescription(self.category, force_description="ammunition_single"))
+                else:
+                    desc.append(self.material.getDescription(self.category, plural=plural))
         for affix in self.prefixes + self.suffixes:
-            desc.append(affix.getDescription(self.category, plural))
+            desc.append(affix.getDescription(self.category, plural=plural))
         if self.curse is not None:
-            desc.append(self.curse.getDescription(self.category, plural))
+            desc.append(self.curse.getDescription(self.category, plural=plural))
         desc = "\n".join(desc)
         desc = self.replaceVars(desc, lowercase=True)
         return desc
-        
     
     def getName(self):
         # Gets the full name of the item. Includes quantity, prefixes, suffixes

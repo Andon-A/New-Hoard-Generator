@@ -60,9 +60,11 @@ This cursed update adds, well, curses. Curses are another type of effect and gen
 * Added the hidden_from_identify (True/False) option, only for curses. If this is TRUE (Default), it adds the hidden_from_identify_single_description or hidden_from_identify_plural_description to the curse's description.
 * Added the destroy_on_removal (True/False) option. If this is TRUE (Default false), it adds the destroy_on_removal_single_description or destroy_on_removal_plural_description, depending on base item or quantity.
 * Added (rarity)_curse_chance option to item_generator.cfg. This is the chance (0-100) that an item of the given rarity will generate with a curse.
-* Updated effect description to allow single_item_description and plural_item_description.
-* If the single_item_description or plural_item_description is empty, it will follow current patterns, checking to see if there's a (category)_description, and then replacing any @(other category)_description if needed.
-* The single_item_Description and plural_item_description entries do not support the @(other category)_description replacements.
+* Updated effect description to allow single_item_description and plural_item_description. Updated most effects to use this. Ammunition effects have been moved to their own file to help with this.
+* Scroll effects have been moved to their own file.
+* The effect checks first to see if there's a set description (IE, armor_description). Otherwise, it uses single_description or plural_description as appropriate.
+* The getDescription() for modifiers allows for forcing of a specific description, including ones not listed. This is used for ammunition and material descriptions.
+* The single_description and plural_description entries do not support the @(other category)_description replacements.
 * Added requires_attunement to effects. If the item does not already have an attunement requirement, these effects will not generate.
 * Changed some more configurations to be more readable.
 * Removed requireaffix option for items. It wasn't being used in code, and only one effect (On scrolls) was attempting to use it. With tweaks to scroll code, this shouldn't be needed, and can be accomplished in other ways if it is.

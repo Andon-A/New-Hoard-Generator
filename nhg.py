@@ -474,7 +474,7 @@ class editPane(tk.Frame):
         current_bonus_label.grid(row=0, column=2)
         avail_bonus_label.grid(row=0, column=3, sticky="E", padx=(0, 10))
         # Gets a button for each of the following: Base Item, Material, and any prefixes or suffixes
-        item_label = ttk.Label(self.edit_frame, text="Base Item: %s" % item.item_name, 
+        item_label = ttk.Label(self.edit_frame, text="Base Item: %s" % item.getItemName(), 
             font = self.master.small_font)
         item_cost_label = ttk.Label(self.edit_frame, text="Bonus: %d" % item.item_bonus, 
             font = self.master.small_font)
@@ -493,13 +493,13 @@ class editPane(tk.Frame):
             font=self.master.small_font, command = lambda : self.replaceEffect(item, item.material))
         material_remove_button = tk.Button(self.edit_frame, text="Remove", relief=tk.RAISED,
             font=self.master.small_font, command = lambda : self.removeEffect(item, item.material))
-        curse_label = ttk.Label(self.edit_frame, text="Curse: %s" % item.curse.id,
+        curse_label = ttk.Label(self.edit_frame, text="Curse: %s" % item.curse.name,
             font = self.master.small_font)
         curse_cost_label = ttk.Label(self.edit_frame, text="Bonus: %d" % item.curse.bonus,
             font = self.master.small_font)
         curse_reroll_button = tk.Button(self.edit_frame, text="Randomize", relief=tk.RAISED,
             font=self.master.small_font,
-            command = lambda : self.rerollRAndomEffect(item, item.curse))
+            command = lambda : self.rerollRandomEffect(item, item.curse))
         curse_replace_button = tk.Button(self.edit_frame, text="Replace", relief=tk.RAISED,
             font=self.master.small_font, command = lambda : self.replaceEffect(item, item.curse))
         curse_remove_button = tk.Button(self.edit_frame, text="Remove", relief=tk.RAISED,
