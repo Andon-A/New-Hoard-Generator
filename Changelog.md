@@ -51,7 +51,7 @@ Item Edit Update! Here's the general overview: The UI now supports editing items
 * Font family and font sizes can now be edited via the config files, in the UI section.
 * If the set font family isn't found (It's now Liberation Serif by default), it'll default to Arial.
 * The Hoard Name, Seed, and CR are now "Read-Only" instead of "Disabled" so you can highlight and copy them even when you can't edit them.
-## 2021.X.X: Curses!
+## 2021.3.28: Curses!
 This cursed update adds, well, curses. Curses are another type of effect and generate on an item in a similar manner to materials - Items can only have one, etc. See below for details!
 * Curses added! Items can only have one curse, and it largely follows the conventions for other effects. They're now listed in the UI as well.
 * Curses do not have names, prefixes, or suffixes. An item's name only adds "Cursed" to the beginning.
