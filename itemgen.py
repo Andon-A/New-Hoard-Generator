@@ -24,6 +24,8 @@ cfg = configs.CFG(configs.ITEM_GEN_CFG)
 ITEM_TYPES = ("ammunition", "armor", "belt", "boots", "bracers", "eyewear",
         "hat", "ring", "rod", "shield", "staff", "trinket", "wand", "weapon",
         "cloak", "gloves", "scroll")
+# These items are plural and use plural descriptions.
+PLURAL_ITEMS = ("ammunition", "boots", "bracers", "eyewear", "gloves")
 # These items are considered "Wondrous Items".
 # Wondrous Items are treated differently in a few ways. Notably, they can ignore
 # some limits.
@@ -202,7 +204,7 @@ def compareDice(dice1, dice2):
 # These are our materials and effects.
 class Modifier:
     def __init__(self, category, itemtype=None, itemtypeconflict=None, itemsubtype=None,
-        damagetype=None, materialtype=None, itemgroup=None, properties=None,
+        damagetype=None, materialtype=None, itemgroup=None, properties=None, attunement=None,
         bonus=None, affix=None, effects=None, itemid=None, rarity=None, force_none=False):
         # Set up our empty variables.
         self.emptyValues()
@@ -212,7 +214,7 @@ class Modifier:
         if not force_none:
             self.id = self.getID(category, itemtype, itemsubtype, damagetype,
                 materialtype, itemgroup, properties, bonus, affix, effects, itemid,
-                rarity=rarity, itemtypeconflict=itemtypeconflict)
+                rarity=rarity, itemtypeconflict=itemtypeconflict, attunement=attunement)
             self.setValues(itemid)
     
     def emptyValues(self):
@@ -230,6 +232,8 @@ class Modifier:
         self.attunement = None
         self.material_type = None
         self.affix = None
+        self.hidden_curse = None
+        self.destroy_curse = None
    
     def setValues(self, itemid):
         if self.id is None:
@@ -237,6 +241,8 @@ class Modifier:
         # Fills out the information for the modifier.
         self.category = item_data.get(self.id, "category")
         self.bonus = item_data.getInt(self.id, "bonus")
+        if self.bonus is None:
+            self.bonus = 0 # Default to 0.
         self.modifiers = self.getModifiers(itemid)
         self.properties = item_data.getList(self.id, "properties")
         self.random_lists = self.getRandomLists()
@@ -245,6 +251,12 @@ class Modifier:
         if self.category == "material":
             # Effects don't have a material type since they're not, well. A material.
             self.material_type = item_data.getList(self.id, "material_type")
+        if self.category == "curse":
+            self.hidden_curse = item_data.getBool(self.id, "hidden_from_identify")
+            if self.hidden_curse is None:
+                # This defaults to True if nothing is there.
+                self.hidden_curse = True
+            self.destroy_curse = item_data.getBool(self.id, "destroy_on_removal")
         self.name = self.getString("name")
         self.prefix = self.getString("prefix")
         self.suffix = self.getString("suffix")
@@ -380,17 +392,65 @@ class Modifier:
         workstr = self.replaceVars(workstr)
         return workstr
     
-    def getDescription(self, category):
+    def getDescription(self, category, force_description=None, plural=None):
+        # Returns the description of the modifier for the item.
+        # If a specified description is found (Say, armor_description), it'll use that. Otherwise
+        # it reverts to single_description or plural_description.
+        # force_description can be a specific description, such as armor or plural. In that case,
+        # it returns the appropriate description regardless of what others are found.
+        # We can also tell the instructor if we want to be plural or singular. This only functions
+        # for returning single_description or plural_description, and is otherwise ignored.
+        # force_description can also be used to grab other descriptions that we won't auto use.
         if self.id is None:
-            return "" # No description for nothing.
-        desc = item_data.get(self.id, "%s_description" % category)
-        if desc is None:
+            # We don't exist.
             return ""
+        desc = ""
+        if type(force_description) is str:
+            desc = item_date.get(self.id, "%s_description" % force_description)
+            if desc is None:
+                return ""
+            elif force_description not in ITEM_TYPES:
+                # We do further replacement on item_type descriptions, but otherwise return.
+                desc = self.replaceVars(desc)
+                return desc
+        else:
+            desc = item_data.get(self.id, "%s_description" % category)
+        if desc is None:
+            # Nothing found. Need something to work with.
+            desc = ""
         for item_type in ITEM_TYPES:
+            # Replace any substitutions here.
             if "@%s_description" % item_type in desc:
-                newdesc = item_data.get(self.id, "%s_description" % item_type)
-                if newdesc is not None:
-                    desc = desc.replace("@%s_description" % item_type, newdesc)
+                new_desc = item_data.get(self.id, "%s_description" % item_type)
+                if new_desc is not None and new_desc != "":
+                    desc = desc.replace("@%s_description" % item_type, new_desc)
+        # If we're not empty, return things.
+        if desc is not None and desc != "":
+            desc = self.replaceVars(desc)
+            return desc
+        # Are we plural?
+        if plural not in ["plural", "single"]:
+            if plural == True:
+                plural = "plural"
+            elif plural == False:
+                plural = "single"
+            elif category in PLURAL_ITEMS:
+                plural = "plural"
+            else:
+                plural = "single"
+        desc = item_data.get(self.id, "%s_description" % plural)
+        if desc is None:
+            # We're going to need something to work with anyway.
+            desc = ""
+        if self.category == "curse":
+            # Special things for curses.
+            if self.hidden_curse:
+                # We are hidden from the identification spell.
+                desc += "\n%s" % cfg.get("Curses", "hidden_from_identify_%s_description" % plural)
+                if self.destroy_curse:
+                    desc += " %s" % cfg.get("Curses", "destroy_on_removal_%s_description" % plural)
+            elif not self.hidden_curse and self.destroy_curse:
+                desc += "\n%s" % cfg.get("Curses", "destroy_on_removal_%s_description" % plural)
         desc = self.replaceVars(desc)
         return desc
         
@@ -432,15 +492,18 @@ class Modifier:
             
     
     def getID(self, category, itemtype, itemsubtype, damagetype, materialtype,
-        itemgroup, properties, bonus, affix, effects, itemid, rarity, itemtypeconflict):
+        itemgroup, properties, bonus, affix, effects, itemid, rarity, itemtypeconflict, attunement):
         # Grabs an appropriate item ID, given our filters.
         # First, time to filter those filters.
+        if type(attunement) is not str and attunement is not None:
+            logging.error("Attunement must be a single string. Ignoring")
+            attunement = None
         if type(category) is not str:
             logging.critical("Modifier must have a category of effect or material")
             raise typeError("Modifier must have a category of effect or material.")
-        elif category not in ["effect","material"]:
-            logging.critical("Modifier must have a category of effect or material.")
-            raise ValueError("Modifier must have a category of effect or material.")
+        elif category not in ["effect","material","curse"]:
+            logging.critical("Modifier must have a category of effect, material, or curse.")
+            raise ValueError("Modifier must have a category of effect, material, or curse.")
         # Item type. Should be a single item type as a string. If not, ignore it.
         if type(itemtype) is not str and itemtype is not None:
             logging.error("Itemtype must be a single string. Ignoring")
@@ -517,7 +580,15 @@ class Modifier:
         weight_list = []
         for mod in mod_list:
             # Now, to go through each of the filters.
-            # First up, item type.
+            # Attunement.
+            if attunement is not None:
+                # Attunement is being handed to us from the item.
+                # We have to check if we require it.
+                data = item_data.getBool(mod, "requires_attunement")
+                if data is True and "attunement" not in attunement:
+                    # But we have no attunement.
+                    continue
+            # Item type.
             if itemtype is not None or itemtypeconflict is not None:
                 # Grab the data from the item.
                 data = item_data.getList(mod, "item_type")
@@ -592,8 +663,8 @@ class Modifier:
                 # Make sure we're within bounds.
                 data = item_data.getInt(mod, "bonus")
                 if data is None:
-                    # Invalid modifier.
-                    continue
+                    # Default to 0.
+                    data = 0
                 if min_bonus > data or data > max_bonus:
                     # Outside of the range required.
                     continue
@@ -680,7 +751,6 @@ class Item:
         self.source = "Generated Item"
         self.rarity = None
         self.category = None
-        self.item_name = ""
         self.id = None
         self.charges = 0
         self.recharge = None
@@ -697,10 +767,9 @@ class Item:
         self.spells = {}
         self.prefixes = []
         self.suffixes = []
-        self.curse = None # Not implemented yet
+        self.curse = None
         self.item_attunement = None
         self.item_bonus = 0
-        self.item_description = None
         self.item_properties = []
         self.attunement = None
         self.enhancement = 0
@@ -753,9 +822,6 @@ class Item:
             self.max_suffix = cfg.getInt("General", "max_suffix")
         if self.category in ENH_ITEMS:
             self.can_have_enh = True
-        # Name and Description. Always last, since sometimes they depend on things.
-        self.item_name = self.getString("name")
-        self.item_description = self.getString("Description")
     
     def getMaxEffects(self):
         return cfg.getInt("General", "max_effects_%s" % self.rarity)
@@ -805,8 +871,6 @@ class Item:
         self.spells = {}
         self.getItemModifiers() # This re-does the spells.
         self.choices = self.chooseRandom()
-        self.item_name = self.getString("name")
-        self.item_description = self.getString("Description")
     
     def getItemModifiers(self):
         # Returns the pre-programmed effects, if they're available.
@@ -945,6 +1009,31 @@ class Item:
         workstr = item_data.get(self.id, strID)
         workstr = self.replaceItemVars(workstr)
         return workstr
+    
+    def getItemName(self):
+        if self.category in PLURAL_ITEMS and self.quantity != 1:
+            # We're plural. Try for a plural name.
+            name = item_data.get(self.id, "plural_name")
+        else:
+            name = item_data.get(self.id, "single_name")
+        if name is None or name == "":
+            # Those were either empty or do not exist. Try default name.
+            name = item_data.get(self.id, "name")
+        return name
+    
+    def getItemDescription(self, plural=None):
+        # Returns a single or plural description, depending on if the item is plural, or
+        # if the item has a quantity of 1.
+        if (self.category in PLURAL_ITEMS and self.quantity != 1) or plural == True:
+            desc = item_data.get(self.id, "plural_description")
+        else:
+            desc = item_data.get(self.id, "single_description")
+        if desc is None or desc == "":
+            desc = item_data.get(self.id, "description")
+        if desc is None:
+            return ""
+        else:
+            return desc
         
     def replaceItemVars(self, workstr):
         # Replaces the randomly generated spells and lists.
@@ -983,6 +1072,51 @@ class Item:
         empty_mat = Modifier(category="material", force_none=True)
         return empty_mat
     
+    def getEmptyCurse(self):
+        # Returns an empty curse.
+        empty_curse = Modifier(category="curse", force_none=True)
+        return empty_curse
+    
+    def getCurse(self):
+        # Curses! Foiled again!
+        # Generates, but does not assign, our curse.
+        # Works much like getMaterial, surprise surprise
+        budget = self.getBudget()
+        if self.curse is not None:
+            budget += self.curse.bonus
+        min_budget = cfg.getInt("Curses","budget_range_curse")
+        if min_budget is None:
+            min_budget = -10
+        else:
+            if min_budget < 0:
+                min_budget = 0
+            min_budget = budget - min_budget
+        all_effects = []
+        all_effects += self.prefixes + self.suffixes
+        if self.material is not None:
+            if self.material.id is not None:
+                all_effects.append(self.material)
+        all_properties = []
+        all_properties += self.getProperties()
+        if self.enhancement > 0:
+            all_properties.append("enhancement")
+        for effect in all_effects:
+            all_properties += effect.properties
+        new_curse = Modifier(category="curse", itemtype=self.category, itemsubtype=self.subtype,
+            damagetype=self.getDamageType(), materialtype=self.material_type,
+            itemgroup=self.getGroups(), properties=all_properties, bonus=(min_budget, budget),
+            effects=all_effects, itemid=self.id, rarity=self.rarity)
+        if self.curse is not None:
+            # We're replacing a curse
+            tries = 10
+            while new_curse.id == self.curse.id and tries > 0:
+                new_curse = Modifier(category="curse", itemtype=self.category, itemsubtype=self.subtype,
+                    damagetype=self.getDamageType(), materialtype=self.material_type,
+                    itemgroup=self.getGroups(), properties=all_properties, bonus=(min_budget, budget),
+                    effects=all_effects, itemid=self.id, rarity=self.rarity)
+                tries -= 1
+        return new_curse
+    
     def getMaterial(self):
         # This gets our material, or gets a new material
         # It does not assign it!
@@ -1018,7 +1152,8 @@ class Item:
                 itemsubtype=self.subtype, damagetype=self.getDamageType(),
                 materialtype=self.material_type, itemgroup=self.getGroups(),
                 properties=all_properties, bonus=(min_budget, budget),
-                effects=all_effects, itemid=self.id, rarity=self.rarity)
+                attunement=self.getAttunement(), effects=all_effects, itemid=self.id,
+                rarity=self.rarity)
         if self.material is not None:
             # We're replacing a material. Try and make sure it's not the same one.
             tries = 10
@@ -1027,7 +1162,8 @@ class Item:
                     itemsubtype=self.subtype, damagetype=self.getDamageType(),
                     materialtype=self.material_type, itemgroup=self.getGroups(),
                     properties=all_properties, bonus=(min_budget, budget),
-                    effects=all_effects, itemid=self.id, rarity=self.rarity)
+                    attunement=self.getAttunement(), effects=all_effects, itemid=self.id,
+                    rarity=self.rarity)
                 tries -= 1
         return new_mat
     
@@ -1036,6 +1172,10 @@ class Item:
         if affix == self.material:
             # We're replacing our material. Neat. Also easy.
             self.material = self.getMaterial()
+            return True
+        elif affix == self.curse:
+            # Replacing our curse. Just as easy.
+            self.curse = self.getCurse()
             return True
         # OK, so our effects. Find out which one it is
         index = -1
@@ -1089,6 +1229,11 @@ class Item:
                 material_type = self.material_type
         else:
             material_type = self.material_type
+        if self.curse is not None:
+            if self.curse.id is not None:
+                all_effects.append(self.curse)
+        else:
+            material_type = self.material_type
         all_properties = []
         all_properties += self.getProperties() # Make sure we've added any!
         item_type_conflict = None
@@ -1116,17 +1261,17 @@ class Item:
             itemsubtype=self.subtype, damagetype=self.getDamageType(),
             materialtype=material_type, itemgroup=self.getGroups(),
             properties=all_properties, bonus=(minbudget, budget),
-            effects=all_effects, itemid=self.id, rarity=self.rarity,
-            itemtypeconflict=item_type_conflict)
+            effects=all_effects, itemid=self.id, rarity=self.rarity, 
+            attunement=self.getAttunement(), itemtypeconflict=item_type_conflict)
         if effect is not None:
             while new_effect.id == effect.id:
                 # Don't give us the same one!
                 new_effect = Modifier(category="effect", affix=affix, itemtype=self.category,
-                itemsubtype=self.subtype, damagetype=self.getDamageType(),
-                materialtype=material_type, itemgroup=self.getGroups(),
-                properties=all_properties, bonus=(minbudget, budget),
-                effects=all_effects, itemid=self.id, rarity=self.rarity,
-                itemtypeconflict=item_type_conflict)
+                    itemsubtype=self.subtype, damagetype=self.getDamageType(),
+                    materialtype=material_type, itemgroup=self.getGroups(),
+                    properties=all_properties, bonus=(minbudget, budget),
+                    effects=all_effects, itemid=self.id, rarity=self.rarity, 
+                    attunement=self.getAttunement(), itemtypeconflict=item_type_conflict)
         new_effect.affix = affix
         return new_effect
     
@@ -1208,6 +1353,15 @@ class Item:
             if self.material.id is not None:
                 # We already have a material.
                 mat_weight = 0
+        cur_weight = cfg.getInt("General", "curse_chance")
+        if self.curse is not None:
+            if self.curse.id is not None:
+                # Already have one.
+                cur_weight = 0
+        if not cfg.getBool("Curses", "generate_curses"):
+            # No curses for us.
+            self.curse = self.getEmptyCurse()
+            cur_weight = 0
         # Prefixes and suffixes.
         # We deal with if we have too many of these later.
         pre_weight = cfg.getInt("General", "prefix_chance")
@@ -1253,9 +1407,9 @@ class Item:
         no_bonus_count = 0
         # OK. Now on to generating things.
         last_effect = None
-        while (pre_weight + suf_weight + enh_weight + mat_weight) > 0:
-            ids = ["enh", "mat", "pre", "suf"]
-            weights = [enh_weight, mat_weight, pre_weight, suf_weight]
+        while (pre_weight + suf_weight + enh_weight + mat_weight + cur_weight) > 0:
+            ids = ["enh", "mat", "pre", "suf", "cur"]
+            weights = [enh_weight, mat_weight, pre_weight, suf_weight, cur_weight]
             choice = random.choices(ids, weights)[0]
             if choice == "enh":
                 self.enhancement = self.getEnhancement()
@@ -1265,6 +1419,16 @@ class Item:
                 self.material = self.getMaterial()
                 mat_weight = 0
                 last_effect = "mat"
+            elif choice == "cur":
+                # Get a curse
+                curse_check = random.randint(1,100)
+                # If we're at or below our curse chance, we get a curse.
+                if curse_check <= cfg.getInt("Curses", "%s_curse_chance" % self.rarity):
+                    self.curse = self.getCurse()
+                else:
+                    self.curse = self.getEmptyCurse()
+                cur_weight = 0
+                last_effect = "cur"     
             elif choice == "pre":
                 if last_effect == "pre":
                     last_effect = None
@@ -1668,16 +1832,17 @@ class Item:
             elif type(self.item_attunement) is list:
                 attune = True
                 alist += self.item_attunement
-        for effect in self.prefixes + self.suffixes + [self.material]:
-            if effect.attunement is not None:
-                if effect.attunement is True:
-                    attune = True
-                elif type(effect.attunement) is str:
-                    attune = True
-                    adesc.append(effect.attunement)
-                elif type(effect.attunement) is list:
-                    attune = True
-                    alist += effect.attunement
+        for effect in self.prefixes + self.suffixes + [self.material, self.curse]:
+            if effect is not None:
+                if effect.attunement is not None:
+                    if effect.attunement is True:
+                        attune = True
+                    elif type(effect.attunement) is str:
+                        attune = True
+                        adesc.append(effect.attunement)
+                    elif type(effect.attunement) is list:
+                        attune = True
+                        alist += effect.attunement
         # Now we have our list.
         if not attune:
             # No attunement required.
@@ -1711,7 +1876,7 @@ class Item:
         if self.isMagic():
             magic = "magical"
         if self.category in ("weapon", "armor", "ammunition"):
-            desc += "%s (%s %s), " % (self.category, magic, self.item_name.lower())
+            desc += "%s (%s %s), " % (self.category, magic, self.getItemName().lower())
         elif self.category in ("potion", "ring", "rod", "scroll", "staff", "wand"):
             desc += "%s %s, " % (magic, self.category)
         elif self.category == "shield":
@@ -1734,11 +1899,11 @@ class Item:
             return workstr
         workstr = workstr.replace("@enh", str(self.enhancement))
         if lowercase:
-            workstr = workstr.replace("@item", self.item_name.lower())
+            workstr = workstr.replace("@item", self.getItemName().lower())
             if self.material.id is not None:
                 workstr = workstr.replace("@material", self.material.name.lower())
         else:
-            workstr = workstr.replace("@item", self.item_name)
+            workstr = workstr.replace("@item", self.getItemName())
             if self.material.id is not None:
                 workstr = workstr.replace("@material", self.material.name)
         workstr = workstr.replace("@category", self.category)
@@ -1785,15 +1950,26 @@ class Item:
             desc.append(chargestr)
         if self.enhancement > 0:
             desc.append(cfg.get("Effects", "%s_enh_description" % self.category))
-        desc.append(self.item_description)
+        plural = None
+        if self.quantity == 1:
+            # Force singular for items that have a quantity of 1.
+            plural = False
+        desc.append(self.getItemDescription(plural))
         if self.material is not None:
-            desc.append(self.material.getDescription(self.category))
+            if self.category != "ammunition":
+                desc.append(self.material.getDescription(self.category, plural=plural))
+            else:
+                if self.quantity == 1:
+                    desc.append(self.material.getDescription(self.category, force_description="ammunition_single"))
+                else:
+                    desc.append(self.material.getDescription(self.category, plural=plural))
         for affix in self.prefixes + self.suffixes:
-            desc.append(affix.getDescription(self.category))
+            desc.append(affix.getDescription(self.category, plural=plural))
+        if self.curse is not None:
+            desc.append(self.curse.getDescription(self.category, plural=plural))
         desc = "\n".join(desc)
         desc = self.replaceVars(desc, lowercase=True)
         return desc
-        
     
     def getName(self):
         # Gets the full name of the item. Includes quantity, prefixes, suffixes
@@ -1807,6 +1983,11 @@ class Item:
         enhstr = ""
         if self.enhancement > 0:
             enhstr = "+%d" % self.enhancement
+        # Curse.
+        curse_str = ""
+        if self.curse is not None:
+            if self.curse.id is not None:
+                curse_str = "Cursed"
         # Prefixes.
         prelist = []
         for prefix in self.prefixes:
@@ -1815,18 +1996,18 @@ class Item:
         # Material and name.
         matname = ""
         if self.material is None:
-            matname = self.item_name
+            matname = self.getItemName()
         elif self.material.id is None:
-            matname = self.item_name
-        elif "@material" in self.item_name:
-            matname = self.item_name.replace("@material", self.material.name)
+            matname = self.getItemName()
+        elif "@material" in self.getItemName():
+            matname = self.getItemName().replace("@material", self.material.name)
         else:
-            matname = " ".join([self.material.name, self.item_name])
+            matname = " ".join([self.material.name, self.getItemName()])
         suflist = []
         for suffix in self.suffixes:
             suflist.append(suffix.suffix)
         suflist = " and ".join(suflist)
-        name = " ".join([qtystr, enhstr, prelist, matname, suflist])
+        name = " ".join([qtystr, enhstr, curse_str, prelist, matname, suflist])
         # Clean up any weird double spaces
         while "  " in name:
             name = name.replace("  "," ")
