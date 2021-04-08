@@ -40,6 +40,7 @@ start_time = start_time = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime(time
 log_level = startup_cfg["General"].getint("logging_level")
 logging.basicConfig(filename="%s/output %s.log" % (log_dir, start_time), level=log_level)
 logging.info("Beginning log file. Start time: %s" % start_time)
+logging.info("Local mode: %s" % str(local_mode))
 # Trim any excess logs.
 log_list = []
 for log in os.listdir(log_dir):
@@ -47,7 +48,7 @@ for log in os.listdir(log_dir):
         log_list.append(log)
 if len(log_list) > startup_cfg["General"].getint("logs_to_keep"):
     log_list.sort(reverse=True) # They're named by time, so oldest first.
-    while len(log_list) > quick_cfg["General"].getint("logs_to_keep"):
+    while len(log_list) > startup_cfg["General"].getint("logs_to_keep"):
         log = log_list.pop()
         os.remove("%s/%s" % (log_dir, log))
 
@@ -61,8 +62,8 @@ def makeSysPaths():
     if not os.path.isdir(data_dir):
         logging.info("Creating data directory.")
         os.makedirs(data_dir, exist_ok=True)
-    for folder in quick_cfg["Folders"]:
-        folder = quick_cfg["Folders"].get(folder)
+    for folder in startup_cfg["DefaultFolders"]:
+        folder = startup_cfg["DefaultFolders"].get(folder)
         if not os.path.isdir(data_dir + "\\%s" % folder):
             logging.info("Creating data folder %s" % folder)
             shutil.copytree("./data/%s" % folder, data_dir + "\\%s" % folder)
@@ -78,7 +79,7 @@ if not local_mode:
     makeSysPaths()
 
 # We don't need to have the local config loaded any further.
-del(quick_cfg)
+del(startup_cfg)
 
 if local_mode:
     # Set ourselves up for local working.
