@@ -5,8 +5,8 @@ import random
 import logging
 import configs
 
-general = configs.CFG(configs.GENERAL)
-item_data = configs.CFG(configs.TREASURE_DATA)
+general = configs.GENERAL
+item_data = configs.TREASURE_DATA
 
 # Treasure categories can be user-defined. So we want to make a list of them.
 categories = []
@@ -87,7 +87,7 @@ class TreasurePile:
         while len(getTreasureList(category, minvalue, maxvalue)) == 0:
             category = random.choice(categories)
             tries += 1
-            if tries > general.getInt("Treasuregen", "maxtries"):
+            if tries > general.getInt("Treasuregen", "max_tries"):
                 # We've tried too many times.
                 return None
         return category

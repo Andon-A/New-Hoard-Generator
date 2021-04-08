@@ -139,3 +139,4 @@ build.py
 itemgen/extra_weapons.cfg
 itemgen/firearms.cfg
 itemgen/firearms_ammo.cfg
+*.odt#

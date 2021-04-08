@@ -10,10 +10,10 @@ import os
 import configs
 
 # Set up our configuration with the new configs files.
-general = configs.CFG(configs.GENERAL)
-generators = configs.CFG(configs.HOARD_GENERATORS)
+general = configs.GENERAL
+generators = configs.HOARD_GENERATORS
 
-MAX_CR = general.getInt("General", "max_cr")
+MAX_CR = general.getInt("Generators", "max_cr")
 
 # Now load our sub-modules.
 import staticitem # For static, pre-made magic items
@@ -72,7 +72,6 @@ class Hoard:
         self.gp = self.getValue("hoard")
         self.getItems()
         self.itemlist = self.getItemList()
-        #self.description = self.getDescription()
     
     def getGenerator(self):
         # Returns which generator we're using depending on CR.
@@ -90,7 +89,7 @@ class Hoard:
                 return gen
                 # We can stop looking now.
         logging.error("No valid generator found. Using default.")
-        gen = general.get("General", "default_generator")
+        gen = general.get("Generators", "default_generator")
         return gen
                 
     def getValue(self, target):

@@ -7,9 +7,9 @@ import logging
 import configs
 import spells
 
-general = configs.CFG(configs.GENERAL)
-item_data = configs.CFG(configs.STATIC_DATA)
-cfg = configs.CFG(configs.STATIC_GEN_CFG)
+general = configs.GENERAL
+item_data = configs.STATIC_DATA
+cfg = configs.STATIC_GEN_CFG
     
 class Item:
     def __init__(self, rarity=None, category=None):

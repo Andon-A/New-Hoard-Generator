@@ -14,7 +14,7 @@ CLASSES = []
 SPELL_SCHOOLS = []
 # Fill in those schools.
 
-spell_data = configs.CFG(configs.SPELL_DATA)
+spell_data = configs.SPELL_DATA
 
 # Update our class lists and spell schools.
 for spell in spell_data.config:
@@ -82,7 +82,7 @@ class Spell:
         spell_list = []
         spell_weights = []
         # Now, cycle through our configs.SPELL_DATA.
-        for spell in configs.SPELL_DATA:
+        for spell in spell_data.config:
             # Check the scool
             if schools is not None:
                 # Each spell belongs to precisely one school.

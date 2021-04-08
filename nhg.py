@@ -12,42 +12,17 @@ import copy
 import logging
 import os
 import time
-
-# Set up our logging.
-start_time = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime(time.time()))
-# Make sure our logging folder exists.
-LOG_DIR = "./logs" # Use this for help in the future, IE. System-dependent folders
-if not os.path.isdir(LOG_DIR):
-    os.mkdir(LOG_DIR)
-logging.basicConfig(filename="%s/output %s.log" % (LOG_DIR, start_time))
-# Import configs in the middle of this?
-# Well, we need info from it, but it can't start without logging started.
 import configs
-general = configs.CFG(configs.GENERAL)
-
-logging.info("Beginning log file\nNHG Version: %s\nStart time: %s" % (configs.VERSION, start_time))
-# Trim any excess logs.
-log_list = []
-for log in os.listdir(LOG_DIR):
-    if log.endswith(".log"):
-        log_list.append(log)
-if len(log_list) > general.getInt("General", "logs_to_keep"):
-    log_list.sort(reverse=True) # They're named by time, so oldest first.
-    while len(log_list) > general.getInt("General", "logs_to_keep"):
-        log = log_list.pop()
-        os.remove("%s/%s" % (LOG_DIR, log))
-        
-# Now we can import our hoard generator.
 import hoardgen
 import pdfwrite
+ 
+ 
+general = configs.GENERAL 
  
 # Setup some constants and other variables.
 # default save path. As with the logs, this should be easily modified for use
 # with a system-dependent folder method
-DEFAULT_SAVE_PATH = os.path.abspath("./%s" % general.get("Folders", "save_folder"))
-# Make sure this path exists
-if not os.path.isdir(DEFAULT_SAVE_PATH):
-    os.mkdir(DEFAULT_SAVE_PATH)
+
 
 class Window (tk.Tk):
     # This just has a few other additional options in it.
@@ -240,29 +215,43 @@ class inputPane(tk.Frame):
         # Saves our hoard.
         files = [("PDF", "*.pdf")]
         hoard = self.master.hoard
+        path = general.get("Folders", "last_save_path")
+        if type(path) is str and not os.path.isdir(path):
+            # The path no longer exists. Return to default.
+            path = None
+        if path is None:
+            path = configs.data_folder
+            path += "\\" + general.get("Folders", "save_folder")
+            if not os.path.isdir(path):
+                os.mkdir(path)
         filename = filedialog.asksaveasfilename(filetypes=files, 
-            defaultextension=files, initialdir=DEFAULT_SAVE_PATH,
+            defaultextension=files, initialdir=path,
             initialfile="%s (%d).pdf" % (hoard.name.name, hoard.cr))
-        seed = hoard.seed
-        if self.master.hoard_edited:
-            seed += " (edited)"
-        pdf = pdfwrite.PDF(hoard.name.name, seed, hoard.cr)
-        # Get the treasure info and save it.
-        treasure_info = "Treasure (%d gp total value)" % (hoard.treasure.value + hoard.gp)
-        treasure_desc = "%d gold pieces\n%d gp in treasures" % (hoard.gp, hoard.treasure.value)
-        if not self.only_gp_var.get():
-            treasure_desc += "\n" + hoard.treasure.getDescription()
-        pdf.addItem(iinfo=treasure_info, idesc=treasure_desc, indent=False)
-        # And all our files.
-        for item in hoard.items:
-            indent = True
-            if item.id == "spellbook":
-                indent = False
-            pdf.addItem(iname=item.getName(), iinfo=item.getInfo(),
-                idesc=item.getDescription(), indent=indent)
-        self.master.hoard_saved = True
-        logging.debug("Saved hoard at %s" % filename)
-        pdf.output(filename)
+        # Get the folder of the savename and save that as our last save dir.
+        if type(filename) is str and filename != "":
+            # We're given a blank path if it's closed, or cancelled.
+            general.set("Folders", "last_save_path", filename[:filename.rfind("/")])
+            general.save()
+            seed = hoard.seed
+            if self.master.hoard_edited:
+                seed += " (edited)"
+            pdf = pdfwrite.PDF(hoard.name.name, seed, hoard.cr)
+            # Get the treasure info and save it.
+            treasure_info = "Treasure (%d gp total value)" % (hoard.treasure.value + hoard.gp)
+            treasure_desc = "%d gold pieces\n%d gp in treasures" % (hoard.gp, hoard.treasure.value)
+            if not self.only_gp_var.get():
+                treasure_desc += "\n" + hoard.treasure.getDescription()
+            pdf.addItem(iinfo=treasure_info, idesc=treasure_desc, indent=False)
+            # And all our files.
+            for item in hoard.items:
+                indent = True
+                if item.id == "spellbook":
+                    indent = False
+                pdf.addItem(iname=item.getName(), iinfo=item.getInfo(),
+                    idesc=item.getDescription(), indent=indent)
+            self.master.hoard_saved = True
+            logging.debug("Saved hoard at %s" % filename)
+            pdf.output(filename)
        
     def autoChange(self, variable, entry):
         # Changes if the entry is available or not.
@@ -330,7 +319,7 @@ class inputPane(tk.Frame):
         if type(cr_str) is not int:
             # We've failed the test. No CR for us.
             return None
-        max_cr = general.getInt("General", "max_cr")
+        max_cr = hoardgen.MAX_CR
         if cr_str > max_cr:
             # Too high.
             cr_str = max_cr

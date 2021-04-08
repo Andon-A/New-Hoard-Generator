@@ -23,7 +23,14 @@ There's several things I'm planning on adding as time goes on. I'll give a rough
 * A better method for saving other than "It kinda works"
 * Art! But I'm very picky about what art I use, mostly because there's a lot of stolen art out there. Picking through that will take time.
 ### What do I need to run it?
-The Hoard Generator was made with Python 3.8.6, and I recently updated to 3.9.2 and everything seems to be working. It largely sticks to using standard libraries, but also uses [pyfpdf2](https://pypi.org/project/fpdf2/) for the pdf saving features. For most of you, that's just a quick `pip install fpdf2` away. Make sure that it's fpdf2 and not the original fpdf, as the original has a few things that are slightly changed.... enough to make it not work.
-Windows Users: In the next few days, I'm going to be working on configuring pyinstaller to make an .exe application that you won't need anything to run. If you have python installed, you can run it yourself, and if you don't, you can always [install it](https://www.python.org/about/gettingstarted/).
+#### Pre-compiled Binaries (Windows)
+Each of the releases has a Windows binary (.exe file) built for it. This can be downloaded via an installer or a loose .zip file. The loose .zip file can be used anywhere and will use local files, while the installer will use system folders.
+#### Pre-compiled Binaries (Mac)
+While not currently a thing, I'm looking at figuring out how to auto-build the Mac .app files. This can't be done natively on a Windows computer so it involves virtual machines and the like. I have no timeline for when this will be done.
+#### Python 3
+For anyone on any system with Python 3, you should be able to run it! While it largely sticks to the standard libraries, it uses [pypdf2](https://pypi.org/project/fpdf2) for the pdf saving features, and [appdirs](https://pypi.org/project/appdirs) for determining system folders.
+If you're using pip, installing these should be simple:
+```pip install fpdf2
+pip install appdirs```
 ### How can I contribute?
-Well, for one, this is the first python code I've written in *some time* so there's definitely some improvements to make to the code. And if you have a feature in mind, feel free to fork this thing, add your feature, and put it on a pull request. I do want to keep it functional across all OS-es, so I've specifically avoided windows-specific things. Ideally it remains fairly lightweight, but ease of use and ease of maintenance is a higher priority.
+There's a bunch of issues in the [issues tracker](https://github.com/Andon-A/New-Hoard-Generator/issues). While much of it is stuff that I have things in mind for, there's definitely some things that others could do. Additionally, this is the first significant python project I've written, let alone the first time I've touched python in *some time*, so I'm sure there's plenty of code that can be cleaner and nicer.
