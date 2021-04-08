@@ -65,7 +65,7 @@ def makeSysPaths():
         folder = quick_cfg["Folders"].get(folder)
         if not os.path.isdir(data_dir + "\\%s" % folder):
             logging.info("Creating data folder %s" % folder)
-            shutil.copytree("./%s" % folder, data_dir + "\\%s" % folder)
+            shutil.copytree("./data/%s" % folder, data_dir + "\\%s" % folder)
     # Why this instead of user_config_dir?
     # on Windows, it just dumps it all into the user data directory.
     # So rather than having to code only for windows, this keeps it system-universal,
@@ -82,95 +82,59 @@ del(quick_cfg)
 
 if local_mode:
     # Set ourselves up for local working.
-    print("Local")
+    logging.info("Using Local Folders")
     cfg_folder = "./default_config"
     data_folder = "./data"
 else:
     # For system folders.
-    print("System")
+    logging.info("Using System Folders")
     data_folder = dirs.user_data_dir
     cfg_folder = data_folder + "\\config"
 
-# Start loading some configs. Check to see if they exist.
-
-
-for cfg_file in ["general", "item_generator", "hoard_generators", "static_items"]:
-    if not os.path.isfile(cfg_folder + "\\%s.cfg" % cfg_file):
-        logging.critical("Critical Error: Configuration file %s.cfg not found. The program cannot continue." % cfg_file)
-        raise SystemExit("Critical Error: Configuration file %s.cfg not found. The program cannot continue." % cfg_file)
-# By now, they exist. Cool.
-
-# Start with general config.
-GENERAL = configparser.ConfigParser()
-GENERAL.read(cfg_folder + "\\general.cfg", encoding="cp1252")
-logging.debug("Loaded general.cfg")
-
-# Item generator
-ITEM_GEN_CFG = configparser.ConfigParser()
-ITEM_GEN_CFG.read(cfg_folder + "\\item_generator.cfg", encoding="cp1252")
-logging.debug("Loaded item_generator.cfg")
-
-# Hoard generator list
-HOARD_GENERATORS = configparser.ConfigParser()
-HOARD_GENERATORS.read(cfg_folder + "\\hoard_generators.cfg", encoding="cp1252")
-logging.debug("Loaded hoard_generators.cfg")
-
-# Static item config
-STATIC_GEN_CFG = configparser.ConfigParser()
-STATIC_GEN_CFG.read(cfg_folder + "\\static_items.cfg", encoding="cp1252")
-logging.debug("Loaded static_items.cfg")
-
-# Now we need our various data
-# But first, a repeatable way to load them.
-def readFiles(folder):
-    # Reads all the data files in the selected folder into the selected config.
-    # First, check the folder.
-    folder = data_folder + "\\%s" % folder
-    if not os.path.isdir(folder):
-        logging.critical("Critical Error: Folder not found: %s" % folder)
-        raise SystemExit("Critical Error: Folder not found: %s" % folder)
-    flist = os.listdir(folder)
-    config = configparser.ConfigParser()
-    filesloaded = 0
-    for file in flist:
-        # Filter out the non-configs.
-        if file.endswith(".cfg"):
-            config.read("%s\\%s" % (folder, file), encoding="cp1252")
-            filesloaded += 1
-    # Now we should have our files loaded.
-    if filesloaded < 1:
-        # But there weren't any to load.
-        logging.critical("Critical Error: There were no information files in %s" % folder)
-        raise SystemExit("Critical Error: There were no information files in %s" % folder)
-    return config
-    
-# Now load it up.
-# Start with item generator
-folder = GENERAL["Folders"]["item_folder"]
-ITEM_DATA = readFiles(folder)
-logging.debug("Loaded Item Generator information files.")
-# And hoard names.
-folder = GENERAL["Folders"]["hoard_name_folder"]
-HOARD_NAMES = readFiles(folder)
-logging.debug("Loaded Hoard Name Generator information files.")
-# Treasures
-folder = GENERAL["Folders"]["treasure_folder"]
-TREASURE_DATA = readFiles(folder)
-logging.debug("Loaded Treasure informationiles")
-# Static Items
-folder = GENERAL["Folders"]["static_folder"]
-STATIC_DATA = readFiles(folder)
-logging.debug("Loaded Static Item information files")
-# Spell Data
-folder = GENERAL["Folders"]["spell_folder"]
-SPELL_DATA = readFiles(folder)
-logging.debug("Loaded Spell data files")
-
-# Now a class to have our information used more easily.
 class CFG:
-    # A class for easy retrieval of data.
-    def __init__(self, config):
-        self.config = config
+    # A class to open, read, manage, and save our configs.
+    def __init__(self, path, filename=None):
+        self.path = path
+        if not os.path.isdir(self.path):
+            logging.critical("Critical Error: Folder not found: %s" % self.path)
+            raise SystemExit("Critical Error: Folder not found: %s" % self.path)
+        if type(filename) is not str:
+            self.filename = None
+        else:
+            self.filename = filename
+        self.config = self.getConfig()
+        
+    def getConfig(self):
+        # Opens either a folder of configs (Which can't be saved)
+        # Or a single config file (Which can be saved)
+        config = configparser.ConfigParser()
+        if self.filename is None:
+            # Read all the files in the given path.
+            flist = os.listdir(self.path)
+            filesloaded = 0
+            for file in flist:
+                if file.endswith(".cfg"):
+                    config.read(self.path + "\\%s" % file, encoding="cp1252")
+                    logging.debug("Loaded %s" % file)
+                    filesloaded += 1
+            if filesloaded < 1:
+                logging.critical("Critical Error: No information files in %s" % self.path)
+                raise SystemExit("Critical Error: No information files in %s" % self.path)
+        else:
+            load = config.read(self.path + "\\" + self.filename, encoding="cp1252")
+            if load == []:
+                logging.critical("Critical Error: File %s not found." % self.filename)
+                raise SystemExit("Critical Error: File %s not found." % self.filename)
+            logging.debug("Loaded %s" % self.filename)
+        return config
+        
+    def save(self):
+        # If we're a single file, save that file. Otherwise, just fail.
+        if self.filename is None:
+            return False
+        with open(self.path + "\\" + self.filename, "w") as cfg_file:
+            self.config.write(cfg_file)
+        return True
     
     def getList(self, section, option):
         # Grabs, cleans, and returns an option that's a semicolon-separated list.
@@ -217,3 +181,16 @@ class CFG:
             if value == optionvalue:
                 data.append(item)
         return data
+        
+# Now load our configs. Config folder first.
+GENERAL = CFG(cfg_folder, "general.cfg")
+ITEM_GEN_CFG = CFG(cfg_folder, "item_generator.cfg")
+HOARD_GENERATORS = CFG(cfg_folder, "hoard_generators.cfg")
+STATIC_GEN_CFG = CFG(cfg_folder, "static_item_cfg.cfg")
+
+# And our regular information.
+ITEM_DATA = CFG(data_folder + "\\" + GENERAL.get("Folders", "item_folder"))
+HOARD_NAMES = CFG(data_folder + "\\" + GENERAL.get("Folders", "hoard_name_folder"))
+TREASURE_DATA = CFG(data_folder + "\\" + GENERAL.get("Folders", "treasure_folder"))
+STATIC_DATA = CFG(data_folder + "\\" + GENERAL.get("Folders", "static_item_folder"))
+SPELL_DATA = CFG(data_folder + "\\" + GENERAL.get("Folders", "spell_folder"))

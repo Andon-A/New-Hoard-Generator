@@ -16,9 +16,9 @@ import spells
 from importlib import reload
 
 # Load our configs.
-general = configs.CFG(configs.GENERAL)
-item_data = configs.CFG(configs.ITEM_DATA)
-cfg = configs.CFG(configs.ITEM_GEN_CFG)
+general = configs.GENERAL
+item_data = configs.ITEM_DATA
+cfg = configs.ITEM_GEN_CFG
 
 # Our item types. We'll use them a bit later.
 ITEM_TYPES = ("ammunition", "armor", "belt", "boots", "bracers", "eyewear",

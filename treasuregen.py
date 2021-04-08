@@ -5,8 +5,8 @@ import random
 import logging
 import configs
 
-general = configs.CFG(configs.GENERAL)
-item_data = configs.CFG(configs.TREASURE_DATA)
+general = configs.GENERAL
+item_data = configs.TREASURE_DATA
 
 # Treasure categories can be user-defined. So we want to make a list of them.
 categories = []

@@ -10,8 +10,8 @@ import os
 import configs
 
 # Set up our configuration with the new configs files.
-general = configs.CFG(configs.GENERAL)
-generators = configs.CFG(configs.HOARD_GENERATORS)
+general = configs.GENERAL
+generators = configs.HOARD_GENERATORS
 
 MAX_CR = general.getInt("Generators", "max_cr")
 
@@ -72,7 +72,6 @@ class Hoard:
         self.gp = self.getValue("hoard")
         self.getItems()
         self.itemlist = self.getItemList()
-        #self.description = self.getDescription()
     
     def getGenerator(self):
         # Returns which generator we're using depending on CR.

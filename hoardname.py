@@ -7,8 +7,8 @@ import logging
 #import os
 import configs
 
-general = configs.CFG(configs.GENERAL)
-name_data = configs.CFG(configs.HOARD_NAMES)
+general = configs.GENERAL
+name_data = configs.HOARD_NAMES
 
 class HoardName:
     def __init__(self, cr, name=None):

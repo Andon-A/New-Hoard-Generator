@@ -17,15 +17,12 @@ import hoardgen
 import pdfwrite
  
  
-general = configs.CFG(configs.GENERAL)       
+general = configs.GENERAL 
  
 # Setup some constants and other variables.
 # default save path. As with the logs, this should be easily modified for use
 # with a system-dependent folder method
-DEFAULT_SAVE_PATH = os.path.abspath("./%s" % general.get("Folders", "save_folder"))
-# Make sure this path exists
-if not os.path.isdir(DEFAULT_SAVE_PATH):
-    os.mkdir(DEFAULT_SAVE_PATH)
+
 
 class Window (tk.Tk):
     # This just has a few other additional options in it.
@@ -218,9 +215,21 @@ class inputPane(tk.Frame):
         # Saves our hoard.
         files = [("PDF", "*.pdf")]
         hoard = self.master.hoard
+        path = general.get("General", "last_save_path")
+        if not os.path.isdir(path):
+            # The path no longer exists. Return to default.
+            path = None
+        if path is None:
+            path = configs.data_folder
+            path += "\\" + general.get("Folders", "save_folder")
+            if not os.path.isdir(path):
+                os.mkdir(path)
         filename = filedialog.asksaveasfilename(filetypes=files, 
-            defaultextension=files, initialdir=DEFAULT_SAVE_PATH,
+            defaultextension=files, initialdir=path,
             initialfile="%s (%d).pdf" % (hoard.name.name, hoard.cr))
+        # Get the folder of the savename and save that as our last save dir.
+        general.set("General", "last_save_path", filename[:filename.rfind("/")])
+        general.save()
         seed = hoard.seed
         if self.master.hoard_edited:
             seed += " (edited)"
