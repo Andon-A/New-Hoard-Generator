@@ -17,10 +17,10 @@ dirs = appdirs.AppDirs(appauthor="andon", appname="nhg", version="alpha")
 
 # First, we want to see if we're running in local mode. To do *that*, we need to open our local
 # general config.
-quick_cfg = configparser.ConfigParser()
-quick_cfg.read("./default_config/general.cfg") 
+startup_cfg = configparser.ConfigParser()
+startup_cfg.read("./config/startup.cfg") 
 
-local_mode = quick_cfg["General"].getboolean("local_mode")
+local_mode = startup_cfg["General"].getboolean("local_mode")
 if local_mode is None:
     local_mode = False # Default to system folder mode.
 
@@ -37,7 +37,7 @@ if not os.path.isdir(log_dir):
 
 # And begin logging.
 start_time = start_time = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime(time.time()))
-log_level = quick_cfg["General"].getint("logging_level")
+log_level = startup_cfg["General"].getint("logging_level")
 logging.basicConfig(filename="%s/output %s.log" % (log_dir, start_time), level=log_level)
 logging.info("Beginning log file. Start time: %s" % start_time)
 # Trim any excess logs.
@@ -45,7 +45,7 @@ log_list = []
 for log in os.listdir(log_dir):
     if log.endswith(".log"):
         log_list.append(log)
-if len(log_list) > quick_cfg["General"].getint("logs_to_keep"):
+if len(log_list) > startup_cfg["General"].getint("logs_to_keep"):
     log_list.sort(reverse=True) # They're named by time, so oldest first.
     while len(log_list) > quick_cfg["General"].getint("logs_to_keep"):
         log = log_list.pop()

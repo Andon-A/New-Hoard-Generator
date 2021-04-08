@@ -70,9 +70,11 @@ This cursed update adds, well, curses. Curses are another type of effect and gen
 * Removed requireaffix option for items. It wasn't being used in code, and only one effect (On scrolls) was attempting to use it. With tweaks to scroll code, this shouldn't be needed, and can be accomplished in other ways if it is.
 ## 2021.X.X: System Folders
 This update is a simple one, as far as the outside goes. It changes the folders from local folders to a system folder.
-* If local_mode in general.cfg is set to TRUE, the program will attempt to run in local mode. Useful for, say, a thumb drive.
-* Added an option in general.cfg to set the logging level, as per the python3 logging module
-* local_mode and logging_level only work if they're in the local (./default_config) general.cfg file.
-* Re-wrote configs.py to use system/local folders as needed. This also means that instead of each section making a CFG class of a given config, these classes are made in configs.py and are used from there.
-* The program will now remember the last folder you saved in.
-* static_items.cfg has been changed to static_item_cfg.cfg, to make more clear this isn't the file with the static items in it.
+* added startup.cfg, to a (local) configs folder. This is checked on startup and determines if the program is in folder mode, log settings, and logging mode.
+* If local_mode in startup.cfg is set to TRUE, the program will run with local files.
+* If local_mode in startup.cfg is set to FALSE, the program will attempt to use system folders.
+* For using system folders, it first copies default_config and data folders to the appropriate system folders if they're not there, and then uses them. 
+* Added an option in startup.cfg to set the logging level (as per the python3 logging module)
+* The program will now remember the last folder you saved to, and open that up again when you hit "Save Hoard"
+* Re-wrote configs.py to use system/local folders as needed, and to streamline use of config files.
+* static_items.cfg has been renamed static_item_cfg.cfg, to make clear that it is not the file that static items are stored in.

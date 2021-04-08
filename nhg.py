@@ -215,8 +215,8 @@ class inputPane(tk.Frame):
         # Saves our hoard.
         files = [("PDF", "*.pdf")]
         hoard = self.master.hoard
-        path = general.get("General", "last_save_path")
-        if not os.path.isdir(path):
+        path = general.get("Folders", "last_save_path")
+        if type(path) is str and not os.path.isdir(path):
             # The path no longer exists. Return to default.
             path = None
         if path is None:
@@ -228,28 +228,30 @@ class inputPane(tk.Frame):
             defaultextension=files, initialdir=path,
             initialfile="%s (%d).pdf" % (hoard.name.name, hoard.cr))
         # Get the folder of the savename and save that as our last save dir.
-        general.set("General", "last_save_path", filename[:filename.rfind("/")])
-        general.save()
-        seed = hoard.seed
-        if self.master.hoard_edited:
-            seed += " (edited)"
-        pdf = pdfwrite.PDF(hoard.name.name, seed, hoard.cr)
-        # Get the treasure info and save it.
-        treasure_info = "Treasure (%d gp total value)" % (hoard.treasure.value + hoard.gp)
-        treasure_desc = "%d gold pieces\n%d gp in treasures" % (hoard.gp, hoard.treasure.value)
-        if not self.only_gp_var.get():
-            treasure_desc += "\n" + hoard.treasure.getDescription()
-        pdf.addItem(iinfo=treasure_info, idesc=treasure_desc, indent=False)
-        # And all our files.
-        for item in hoard.items:
-            indent = True
-            if item.id == "spellbook":
-                indent = False
-            pdf.addItem(iname=item.getName(), iinfo=item.getInfo(),
-                idesc=item.getDescription(), indent=indent)
-        self.master.hoard_saved = True
-        logging.debug("Saved hoard at %s" % filename)
-        pdf.output(filename)
+        if type(filename) is str and filename != "":
+            # We're given a blank path if it's closed, or cancelled.
+            general.set("Folders", "last_save_path", filename[:filename.rfind("/")])
+            general.save()
+            seed = hoard.seed
+            if self.master.hoard_edited:
+                seed += " (edited)"
+            pdf = pdfwrite.PDF(hoard.name.name, seed, hoard.cr)
+            # Get the treasure info and save it.
+            treasure_info = "Treasure (%d gp total value)" % (hoard.treasure.value + hoard.gp)
+            treasure_desc = "%d gold pieces\n%d gp in treasures" % (hoard.gp, hoard.treasure.value)
+            if not self.only_gp_var.get():
+                treasure_desc += "\n" + hoard.treasure.getDescription()
+            pdf.addItem(iinfo=treasure_info, idesc=treasure_desc, indent=False)
+            # And all our files.
+            for item in hoard.items:
+                indent = True
+                if item.id == "spellbook":
+                    indent = False
+                pdf.addItem(iname=item.getName(), iinfo=item.getInfo(),
+                    idesc=item.getDescription(), indent=indent)
+            self.master.hoard_saved = True
+            logging.debug("Saved hoard at %s" % filename)
+            pdf.output(filename)
        
     def autoChange(self, variable, entry):
         # Changes if the entry is available or not.
