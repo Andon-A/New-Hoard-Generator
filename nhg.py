@@ -317,7 +317,7 @@ class inputPane(tk.Frame):
         if type(cr_str) is not int:
             # We've failed the test. No CR for us.
             return None
-        max_cr = general.getInt("General", "max_cr")
+        max_cr = hoardgen.MAX_CR
         if cr_str > max_cr:
             # Too high.
             cr_str = max_cr

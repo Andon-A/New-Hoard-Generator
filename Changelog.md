@@ -73,3 +73,6 @@ This update is a simple one, as far as the outside goes. It changes the folders 
 * If local_mode in general.cfg is set to TRUE, the program will attempt to run in local mode. Useful for, say, a thumb drive.
 * Added an option in general.cfg to set the logging level, as per the python3 logging module
 * local_mode and logging_level only work if they're in the local (./default_config) general.cfg file.
+* Re-wrote configs.py to use system/local folders as needed. This also means that instead of each section making a CFG class of a given config, these classes are made in configs.py and are used from there.
+* The program will now remember the last folder you saved in.
+* static_items.cfg has been changed to static_item_cfg.cfg, to make more clear this isn't the file with the static items in it.
