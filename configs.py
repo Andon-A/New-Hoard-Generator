@@ -10,7 +10,7 @@ import logging
 import time
 import configparser
 
-VERSION = "2021.3.28 (Alpha)"
+VERSION = "2021.4.7 (Alpha)"
 
 # Our system dirs
 dirs = appdirs.AppDirs(appauthor="andon", appname="nhg", version="alpha")
