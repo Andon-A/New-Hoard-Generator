@@ -20,9 +20,8 @@ import pdfwrite
 general = configs.GENERAL 
  
 # Setup some constants and other variables.
-# default save path. As with the logs, this should be easily modified for use
-# with a system-dependent folder method
 
+TITLE_STR = "New Hoard Generator v%s" % configs.VERSION
 
 class Window (tk.Tk):
     # This just has a few other additional options in it.
@@ -36,7 +35,10 @@ class Window (tk.Tk):
         # Window things.
         self.minsize(1300, 800)
         self.resizable(False, False)
-        self.title("New Hoard Generator v%s" % configs.VERSION)
+        if configs.local_mode:
+            self.title(TITLE_STR + " (local mode)")
+        else:
+            self.title(TITLE_STR)
         self.pack_propagate(0)
         # Set up our columns.
         self.grid_columnconfigure(0, minsize=400)
@@ -147,7 +149,7 @@ class titlePane(tk.Frame):
         self.grid_propagate(0)
         self.exit_button = tk.Button(self, text="Exit", relief=tk.RAISED,
             font=main.standard_font, command=main.exitWindow)
-        self.main_title = ttk.Label(self, text="New Hoard Generator v%s" % configs.VERSION,
+        self.main_title = ttk.Label(self, text=TITLE_STR,
             font=main.title_font)
         self.exit_button.pack(side=tk.RIGHT, padx=10, pady=5)
         self.main_title.pack(side=tk.LEFT)
